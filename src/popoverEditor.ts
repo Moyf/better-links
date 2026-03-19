@@ -105,6 +105,10 @@ export class PopoverEditor {
 		return this.destinationInputEl;
 	}
 
+	setDisplayText(value: string): void {
+		this.displayInputEl.value = value;
+	}
+
 	setSuggestActiveChecker(fn: (() => boolean) | null): void {
 		this.isSuggestActiveChecker = fn;
 	}

@@ -1,6 +1,6 @@
 import { AbstractInputSuggest, App, prepareFuzzySearch, renderResults, TFile } from "obsidian";
 import type { HeadingCache, SearchResult } from "obsidian";
-import { shouldUseWikiLinkFormat } from "./linkActions";
+import type { BetterLinksSettings } from "./settings";
 
 const MAX_SUGGESTIONS = 20;
 
@@ -14,11 +14,19 @@ type HeadingSuggestion = {
 	kind: "heading";
 	file: TFile;
 	heading: HeadingCache;
+	/** 原始输入中 # 之前的文件部分（用于重组 destination） */
 	filePart: string;
 	match: SearchResult | null;
 };
 
 export type LinkSuggestion = FileSuggestion | HeadingSuggestion;
+
+export interface LinkSuggestCallbacks {
+	/** 选中建议后，用于更新 displayText 输入框的回调 */
+	setDisplayText: (value: string) => void;
+	/** 选中后清除校验警告、取消 debounce */
+	onSuggestionSelected: () => void;
+}
 
 export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion> {
 	private _active = false;
@@ -27,7 +35,8 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		app: App,
 		private readonly inputEl: HTMLInputElement,
 		private readonly sourcePath: string,
-		private readonly onSuggestionSelected: () => void,
+		private readonly callbacks: LinkSuggestCallbacks,
+		private readonly settings: BetterLinksSettings,
 	) {
 		super(app, inputEl);
 		this.limit = MAX_SUGGESTIONS;
@@ -49,65 +58,172 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 
 	getSuggestions(query: string): LinkSuggestion[] {
 		const hashIndex = query.indexOf("#");
-
 		if (hashIndex >= 0) {
 			return this.getHeadingSuggestions(query, hashIndex);
 		}
-
 		return this.getFileSuggestions(query);
 	}
 
 	renderSuggestion(item: LinkSuggestion, el: HTMLElement): void {
 		if (item.kind === "file") {
-			if (item.match && item.match.matches.length > 0) {
-				renderResults(el, item.file.path, item.match);
-			} else {
-				el.setText(item.file.path);
-			}
-			return;
-		}
-
-		// heading
-		const prefix = "#".repeat(item.heading.level) + " ";
-		const fullText = prefix + item.heading.heading;
-		if (item.match && item.match.matches.length > 0) {
-			// offset by prefix length so highlights land on the heading text
-			renderResults(el, fullText, item.match, prefix.length);
+			this.renderFileSuggestion(item, el);
 		} else {
-			el.setText(fullText);
+			this.renderHeadingSuggestion(item, el);
 		}
 	}
 
 	selectSuggestion(item: LinkSuggestion, _evt: MouseEvent | KeyboardEvent): void {
-		let value: string;
+		// ── 1. 计算 destination 值（遵循 OB 内部链接格式设置）────────────────
+		let destination: string;
+		let subpath: string | undefined;
 
 		if (item.kind === "file") {
-			// Use shortest unambiguous path: strip .md when wikilink format is active
-			value = shouldUseWikiLinkFormat(this.app)
-				? item.file.path.replace(/\.md$/i, "")
-				: item.file.path;
+			destination = this.getDestinationPath(item.file);
 		} else {
-			// heading: reassemble file part + # + heading
-			const filePart = shouldUseWikiLinkFormat(this.app)
-				? item.filePart.replace(/\.md$/i, "")
-				: item.filePart;
-			value = `${filePart}#${item.heading.heading}`;
+			destination = this.getDestinationPath(item.file);
+			subpath = item.heading.heading;
 		}
 
-		this.setValue(value);
-		// Dispatch native input event so the existing onDestinationInput / debounce-validation pipeline triggers
+		const fullDestination = subpath ? `${destination}#${subpath}` : destination;
+		this.setValue(fullDestination);
+
+		// ── 2. 同步 displayText（按设置决定）────────────────────────────────
+		const alias = this.computeAlias(item);
+		if (alias !== null) {
+			this.callbacks.setDisplayText(alias);
+		}
+
+		// ── 3. 触发 input 事件让 debounce 校验流程感知到变化──────────────────
 		this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-		this.onSuggestionSelected();
+		this.callbacks.onSuggestionSelected();
 		this.close();
 	}
 
-	// ── private helpers ──────────────────────────────────────────────────────
+	// ── private: rendering ───────────────────────────────────────────────────
+
+	private renderFileSuggestion(item: FileSuggestion, el: HTMLElement): void {
+		const basename = item.file.basename;
+		const folder = item.file.parent?.path ?? "";
+		const fullPath = item.file.path;
+
+		// 主行：文件名（含高亮）
+		const titleEl = el.createDiv({ cls: "better-links-suggest__title" });
+		if (item.match && item.match.matches.length > 0) {
+			// 高亮范围是针对完整路径的，让 renderResults 渲染完整路径然后只显示 basename 部分
+			// 简化：直接用文件名渲染，不偏移（对用户查询 basename 的场景有效）
+			const basenameMatch = recomputeMatchForBasename(item.file.path, basename, item.match);
+			if (basenameMatch) {
+				renderResults(titleEl, basename, basenameMatch);
+			} else {
+				titleEl.setText(basename);
+			}
+		} else {
+			titleEl.setText(basename);
+		}
+
+		// 副行：文件夹路径（小字）
+		if (folder && folder !== "/") {
+			el.createDiv({ cls: "better-links-suggest__path", text: folder });
+		}
+	}
+
+	private renderHeadingSuggestion(item: HeadingSuggestion, el: HTMLElement): void {
+		const prefix = "#".repeat(item.heading.level) + " ";
+		const headingText = item.heading.heading;
+
+		// 主行：标题（含层级前缀）
+		const titleEl = el.createDiv({ cls: "better-links-suggest__title" });
+		const prefixSpan = titleEl.createSpan({ cls: "better-links-suggest__heading-prefix", text: prefix });
+		prefixSpan.style.opacity = "0.5";
+		const textSpan = titleEl.createSpan();
+		if (item.match && item.match.matches.length > 0) {
+			renderResults(textSpan, headingText, item.match);
+		} else {
+			textSpan.setText(headingText);
+		}
+
+		// 副行：文件名（小字）
+		el.createDiv({ cls: "better-links-suggest__path", text: item.file.basename });
+	}
+
+	// ── private: alias computation ───────────────────────────────────────────
+
+	/**
+	 * 根据设置计算选中后应填入 displayText 的别名。
+	 * 返回 null 表示不修改 displayText。
+	 */
+	private computeAlias(item: LinkSuggestion): string | null {
+		if (!(this.settings.syncAlias ?? false)) return null;
+
+		const mode = this.settings.aliasSyncMode ?? "heading-only";
+		const sep = this.settings.aliasSeparator ?? " > ";
+
+		if (item.kind === "file") {
+			// 选中的是文件（无标题），别名为文件的展示名
+			const fileName = this.getDisplayName(item.file);
+			return fileName;
+		}
+
+		// 选中的是标题
+		const headingText = item.heading.heading;
+		const fileName = this.getDisplayName(item.file);
+
+		switch (mode) {
+			case "heading-only":
+				return headingText;
+			case "filename-then-heading":
+				return `${fileName}${sep}${headingText}`;
+			case "heading-then-filename":
+				return `${headingText}${sep}${fileName}`;
+		}
+	}
+
+	/**
+	 * 获取文件的展示名：优先读 frontmatter 中指定属性，fallback 到 basename。
+	 */
+	private getDisplayName(file: TFile): string {
+		const propertyKey = this.settings.aliasTitleProperty ?? "title";
+		const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
+		const titleFromFm = fm?.[propertyKey];
+		if (typeof titleFromFm === "string" && titleFromFm.trim()) {
+			return titleFromFm.trim();
+		}
+		return file.basename;
+	}
+
+	// ── private: destination path ────────────────────────────────────────────
+
+	/**
+	 * 生成遵循 OB 内部链接格式设置的 destination 路径字符串。
+	 * 使用 generateMarkdownLink 生成完整链接，再从中提取路径部分。
+	 */
+	private getDestinationPath(file: TFile): string {
+		// generateMarkdownLink 返回如 [[path]]、[[path|alias]]、[alias](path) 等
+		const fullLink = this.app.fileManager.generateMarkdownLink(file, this.sourcePath);
+
+		// 提取 wikilink 格式：[[path]] or [[path|alias]]
+		const wikiMatch = /^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/.exec(fullLink);
+		if (wikiMatch) {
+			return wikiMatch[1] ?? file.path;
+		}
+
+		// 提取 markdown 格式：[text](path) or [](path)
+		const mdMatch = /^\[.*?\]\(([^)]+)\)$/.exec(fullLink);
+		if (mdMatch) {
+			return mdMatch[1] ?? file.path;
+		}
+
+		// fallback: 直接用完整路径
+		return file.path;
+	}
+
+	// ── private: suggestions ─────────────────────────────────────────────────
 
 	private getFileSuggestions(query: string): LinkSuggestion[] {
-		const files = this.app.vault.getMarkdownFiles();
+		// vault.getFiles() 返回所有文件（含非 md），vault.getMarkdownFiles() 只返回 md
+		const files = this.app.vault.getFiles();
 
 		if (!query) {
-			// Empty query: return first MAX_SUGGESTIONS alphabetically
 			return files
 				.slice()
 				.sort((a, b) => a.path.localeCompare(b.path))
@@ -119,7 +235,10 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		const results: FileSuggestion[] = [];
 
 		for (const file of files) {
-			const match = search(file.path);
+			// 同时对 path 和 basename 做匹配，取更高分
+			const matchPath = search(file.path);
+			const matchBasename = search(file.basename);
+			const match = betterMatch(matchPath, matchBasename);
 			if (match) {
 				results.push({ kind: "file", file, match });
 			}
@@ -133,7 +252,6 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		const filePart = query.slice(0, hashIndex);
 		const headingQuery = query.slice(hashIndex + 1);
 
-		// Resolve file — requires at least some file part to attempt
 		const file = this.app.metadataCache.getFirstLinkpathDest(filePart, this.sourcePath);
 		if (!file) return [];
 
@@ -141,7 +259,6 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		if (headings.length === 0) return [];
 
 		if (!headingQuery) {
-			// No heading query yet: show all headings in document order
 			return headings.slice(0, MAX_SUGGESTIONS).map((heading) => ({
 				kind: "heading" as const,
 				file,
@@ -164,4 +281,34 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		results.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
 		return results.slice(0, MAX_SUGGESTIONS);
 	}
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+/** 返回两个 SearchResult 中分数更高的那个（或唯一非 null 的那个）。 */
+function betterMatch(a: SearchResult | null, b: SearchResult | null): SearchResult | null {
+	if (!a && !b) return null;
+	if (!a) return b;
+	if (!b) return a;
+	return a.score >= b.score ? a : b;
+}
+
+/**
+ * 将针对完整路径的 SearchResult 偏移到 basename 上。
+ * 如果 matches 都在 basename 范围内，返回重新偏移的结果；否则返回 null（让调用方 fallback 到纯文字）。
+ */
+function recomputeMatchForBasename(
+	fullPath: string,
+	basename: string,
+	result: SearchResult,
+): SearchResult | null {
+	const offset = fullPath.length - basename.length;
+	if (offset < 0) return null;
+
+	const shifted = result.matches
+		.map(([start, end]) => [start - offset, end - offset] as [number, number])
+		.filter(([start, end]) => start >= 0 && end <= basename.length);
+
+	if (shifted.length === 0) return null;
+	return { score: result.score, matches: shifted };
 }

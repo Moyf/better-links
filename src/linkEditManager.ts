@@ -85,10 +85,16 @@ export class LinkEditManager {
 				this.plugin.app,
 				this.popoverEditor.destinationInput,
 				match.sourcePath,
-				() => {
-					this.cancelPendingValidation();
-					this.setWarning(false);
+				{
+					setDisplayText: (value) => {
+						this.popoverEditor.setDisplayText(value);
+					},
+					onSuggestionSelected: () => {
+						this.cancelPendingValidation();
+						this.setWarning(false);
+					},
 				},
+				this.plugin.settings,
 			);
 			this.popoverEditor.setSuggestActiveChecker(() => this.suggest?.isActive ?? false);
 		}
