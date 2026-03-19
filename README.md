@@ -20,6 +20,9 @@ Click a link to open a small popover where you can edit text/target and run quic
   - Copy URL or file name (for image links)
   - Delete link (hidden for image links)
 - Localized UI (English + Chinese).
+- Support suggestion for internal links and heading. ![internal link suggestion](assets/suggestion.gif)
+  - Auto-complete files and headings in the vault, quickly select and insert link targets.
+  - Automatically update display text.
 
 ### Notes
 
@@ -51,6 +54,9 @@ Better Links 是一个 Obsidian 插件，用于在 Markdown 编辑器中快速�
   - 复制 URL（图片类复制文件名）
   - 删除链接（图片类隐藏删除按钮）
 - 支持中英文界面。
+- 内部链接建议功能。![内部链接建议](assets/suggestion.gif)
+  - 支持自动补全库内文件和标题，快速选择并插入链接目标。
+  - 自动更新显示名称。
 
 ### 说明
 

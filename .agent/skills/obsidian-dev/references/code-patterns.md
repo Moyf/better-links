@@ -12,6 +12,35 @@ Comprehensive code patterns for common Obsidian plugin development tasks. **Alwa
 - **code-patterns.md**: Complete, production-ready examples with full context, error handling, and best practices
 - **common-tasks.md**: Quick snippets and basic patterns for simple operations
 
+## Plugin Icon (Ribbon / Settings Tab)
+
+设置插件图标有两种场景：
+
+**Settings tab 图标**（推荐）：在 `PluginSettingTab` 子类上声明 `icon` 属性，Obsidian 会自动将其用于设置标签页的图标。
+
+```ts
+export class MySettingTab extends PluginSettingTab {
+  plugin: MyPlugin;
+  icon: string = 'link'; // Lucide icon name
+
+  constructor(app: App, plugin: MyPlugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+  // ...
+}
+```
+
+**Ribbon 图标**（可选）：在 `onload()` 里调用 `this.addRibbonIcon()`，第一个参数为 Lucide 图标名，第二个为 tooltip，第三个为点击回调。
+
+```ts
+this.addRibbonIcon('link', 'My Plugin', (evt: MouseEvent) => {
+  new Notice('Clicked!');
+});
+```
+
+> 两者可同时使用，互不冲突。图标名均为 Lucide 图标名称（小写连字符形式，如 `copy-plus`、`link`）。
+
 ## Complete Settings Tab
 
 **Source**: Based on `.ref/obsidian-sample-plugin/main.ts`, `.ref/obsidian-plugin-docs/docs/guides/settings.md`, and `.ref/obsidian-api/obsidian.d.ts`

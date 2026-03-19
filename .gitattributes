@@ -1,0 +1,19 @@
+# Default: normalize line endings to LF on commit
+* text=auto eol=lf
+
+# Explicitly LF for files processed by shell scripts on CI
+*.md text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
