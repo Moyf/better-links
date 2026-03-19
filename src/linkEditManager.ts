@@ -39,8 +39,11 @@ export class LinkEditManager {
 
 				void copyUrl(this.plugin.app, session.match, destination);
 			},
-			onDelete: () => {
-				this.deleteCurrentLink();
+			onDelete: (forceRemoveAll) => {
+				this.deleteCurrentLink(forceRemoveAll);
+			},
+			onToggleEmbed: () => {
+				this.toggleEmbed();
 			},
 			onClose: () => {
 				this.saveAndClose();
@@ -82,6 +85,8 @@ export class LinkEditManager {
 		this.destinationInvalid = false;
 		this.activeSession = { match, referenceEl };
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
+		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
+		const isEmbedded = match.originalText.startsWith("!");
 		this.popoverEditor.open(referenceEl, {
 			displayText: match.displayText,
 			destination: match.destination,
@@ -91,6 +96,8 @@ export class LinkEditManager {
 			copyUrlLabel: copyUrlLabel(match, this.plugin),
 			copyUrlIcon: copyUrlIcon(match),
 			showDelete: !isImage,
+			showEmbedToggle,
+			isEmbedded,
 		});
 
 		// 只对 wiki / markdown 非图片链接更新 suggest 上下文
@@ -183,16 +190,47 @@ export class LinkEditManager {
 		await copyMarkdown(this.plugin.app, session.match, values);
 	}
 
-	private deleteCurrentLink(): void {
+	private deleteCurrentLink(forceRemoveAll = false): void {
 		const session = this.activeSession;
 		if (!session) {
 			return;
 		}
 
-		const replacement = buildDeletionText(session.match, this.plugin.settings);
+		let replacement: string;
+		let noticeKey: "noticeLinkRemoved" | "noticeLinkRemovedAll";
+
+		if (forceRemoveAll) {
+			replacement = "";
+			noticeKey = "noticeLinkRemovedAll";
+		} else {
+			replacement = buildDeletionText(session.match, this.plugin.settings);
+			noticeKey = "noticeLinkRemoved";
+		}
+
 		this.replaceActiveRange(replacement);
-		new Notice(this.plugin.t("noticeLinkRemoved"));
+		new Notice(this.plugin.t(noticeKey));
 		this.close();
+	}
+
+	/** 切换当前链接的 ! 前缀（嵌入/非嵌入） */
+	private toggleEmbed(): void {
+		const session = this.activeSession;
+		if (!session) return;
+
+		const { displayText, destination } = this.popoverEditor.getValues();
+		const isCurrentlyEmbedded = session.match.originalText.startsWith("!");
+		const nextEmbedded = !isCurrentlyEmbedded;
+
+		// 重建链接文本，切换前缀
+		const nextText = rebuildWithEmbedPrefix(session.match, displayText, destination, nextEmbedded);
+		if (nextText === session.match.originalText) return;
+
+		// 更新 session 状态
+		session.match.originalText = nextText;
+		this.replaceActiveRange(nextText);
+
+		// 更新按钮视觉状态（不关闭浮窗）
+		this.popoverEditor.updateEmbedState(nextEmbedded);
 	}
 
 	private replaceActiveRange(replacement: string): void {
@@ -209,6 +247,12 @@ export class LinkEditManager {
 		}
 
 		editor.replaceRange(replacement, session.match.range.from, session.match.range.to, "better-links");
+
+		// 更新 range.to，因为替换后文本长度可能变化
+		session.match.range.to = {
+			line: session.match.range.from.line,
+			ch: session.match.range.from.ch + replacement.length,
+		};
 	}
 
 	/** 调度 debounce 校验（300ms） */
@@ -353,4 +397,25 @@ function copyUrlIcon(match: EditorLinkMatch): string {
 	}
 
 	return isLikelyExternalDestination(match.destination) ? "link" : "file";
+}
+
+/** 是否支持嵌入切换（只有 wiki / markdown 类型支持 ! 前缀） */
+function canToggleEmbed(match: EditorLinkMatch): boolean {
+	return match.type === "wiki" || match.type === "markdown" || match.type === "imageWiki" || match.type === "imageMarkdown";
+}
+
+/** 重建链接文本，强制设定是否有 ! 前缀 */
+function rebuildWithEmbedPrefix(match: EditorLinkMatch, displayText: string, destination: string, embed: boolean): string {
+	const prefix = embed ? "!" : "";
+	const dest = destination.trim();
+	const disp = displayText.trim();
+
+	if (match.type === "wiki" || match.type === "imageWiki") {
+		if (!dest) return "";
+		const hasAlias = disp.length > 0 && disp !== dest;
+		return hasAlias ? `${prefix}[[${dest}|${disp}]]` : `${prefix}[[${dest}]]`;
+	}
+
+	// markdown / imageMarkdown
+	return `${prefix}[${disp}](${dest})`;
 }

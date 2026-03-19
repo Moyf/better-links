@@ -250,5 +250,17 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 						});
 				});
 		});
+
+		actionGroup.addSetting((setting) => {
+			setting
+				.setName(t("settingsShowEmbedToggleName"))
+				.setDesc(t("settingsShowEmbedToggleDesc"))
+				.addToggle((toggle) => {
+					toggle.setValue(this.plugin.settings.showEmbedToggle ?? false).onChange(async (value) => {
+						this.plugin.settings.showEmbedToggle = value;
+						await this.plugin.saveSettings();
+					});
+				});
+		});
 	}
 }

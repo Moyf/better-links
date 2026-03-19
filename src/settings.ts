@@ -25,6 +25,8 @@ export interface BetterLinksSettings {
     aliasSeparator?: string;
     /** 读取文件名的 frontmatter 属性名（默认 "title"，找不到时 fallback 到文件名） */
     aliasTitleProperty?: string;
+    /** 是否在浮窗中显示嵌入切换按钮（! 前缀切换） */
+    showEmbedToggle?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -42,4 +44,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     aliasSyncMode: "heading-only",
     aliasSeparator: " > ",
     aliasTitleProperty: "title",
+    showEmbedToggle: false,
 };
