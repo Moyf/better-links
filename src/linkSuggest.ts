@@ -119,23 +119,25 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	// ── private: rendering ───────────────────────────────────────────────────
 
 	private renderFileSuggestion(item: FileSuggestion, el: HTMLElement): void {
-		const basename = item.file.basename;
+		const isMarkdown = item.file.extension === "md";
+		const displayName = isMarkdown ? item.file.basename : item.file.name; // name 含后缀
 		const folder = item.file.parent?.path ?? "";
-		const fullPath = item.file.path;
 
-		// 主行：文件名（含高亮）
+		if (!isMarkdown) {
+			el.addClass("better-links-suggest__item--non-md");
+		}
+
+		// 主行：文件名（含高亮；非 md 显示完整 name 含后缀）
 		const titleEl = el.createDiv({ cls: "better-links-suggest__title" });
 		if (item.match && item.match.matches.length > 0) {
-			// 高亮范围是针对完整路径的，让 renderResults 渲染完整路径然后只显示 basename 部分
-			// 简化：直接用文件名渲染，不偏移（对用户查询 basename 的场景有效）
-			const basenameMatch = recomputeMatchForBasename(item.file.path, basename, item.match);
+			const basenameMatch = recomputeMatchForBasename(item.file.path, displayName, item.match);
 			if (basenameMatch) {
-				renderResults(titleEl, basename, basenameMatch);
+				renderResults(titleEl, displayName, basenameMatch);
 			} else {
-				titleEl.setText(basename);
+				titleEl.setText(displayName);
 			}
 		} else {
-			titleEl.setText(basename);
+			titleEl.setText(displayName);
 		}
 
 		// 副行：文件夹路径（小字）

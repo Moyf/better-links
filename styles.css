@@ -139,3 +139,12 @@
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
 }
+
+/* 非 Markdown 文件条目降色 */
+.better-links-suggest__item--non-md .better-links-suggest__title {
+	color: var(--text-muted);
+}
+
+.better-links-suggest__item--non-md .better-links-suggest__path {
+	color: var(--text-faint);
+}

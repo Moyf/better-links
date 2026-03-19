@@ -55,7 +55,30 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
-        behaviorGroup.addSetting((setting) => {
+        // ── 链接建议 group ────────────────────────────────────────────────────
+        const suggestGroup = new SettingGroup(containerEl)
+            .setHeading(t("settingsLinkSuggestionsGroup"))
+            .addClass("better-links-settings-group");
+
+        // 子项元素列表（启用开关关闭时全部隐藏）
+        const suggestSubEls: HTMLElement[] = [];
+
+        const updateSuggestSubSettings = () => {
+            const enabled = this.plugin.settings.enableLinkSuggestions ?? true;
+            const syncEnabled = this.plugin.settings.syncAlias ?? false;
+            const mode = this.plugin.settings.aliasSyncMode ?? "heading-only";
+            const showAliasSub = syncEnabled && mode !== "heading-only";
+            for (const el of suggestSubEls) {
+                el.toggleClass("is-hidden", !enabled);
+            }
+            if (enabled) {
+                aliasModeSettingEl?.toggleClass("is-hidden", !syncEnabled);
+                aliasSepSettingEl?.toggleClass("is-hidden", !showAliasSub);
+                aliasTitlePropSettingEl?.toggleClass("is-hidden", !showAliasSub);
+            }
+        };
+
+        suggestGroup.addSetting((setting) => {
             setting
                 .setName(t("settingsEnableLinkSuggestionsName"))
                 .setDesc(t("settingsEnableLinkSuggestionsDesc"))
@@ -63,25 +86,18 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                     toggle.setValue(this.plugin.settings.enableLinkSuggestions ?? true).onChange(async (value) => {
                         this.plugin.settings.enableLinkSuggestions = value;
                         await this.plugin.saveSettings();
+                        updateSuggestSubSettings();
                     });
                 });
         });
 
-        // ── 别名同步设置（仅在启用链接建议时有意义，但独立控制）────────────────
+        // ── 别名同步子设置 ──────────────────────────────────────────────────
         let aliasModeSettingEl: HTMLElement | null = null;
         let aliasSepSettingEl: HTMLElement | null = null;
         let aliasTitlePropSettingEl: HTMLElement | null = null;
 
-        const updateAliasSubSettings = () => {
-            const syncEnabled = this.plugin.settings.syncAlias ?? false;
-            const mode = this.plugin.settings.aliasSyncMode ?? "heading-only";
-            const showSub = syncEnabled && mode !== "heading-only";
-            aliasModeSettingEl?.toggleClass("is-hidden", !syncEnabled);
-            aliasSepSettingEl?.toggleClass("is-hidden", !showSub);
-            aliasTitlePropSettingEl?.toggleClass("is-hidden", !showSub);
-        };
-
-        behaviorGroup.addSetting((setting) => {
+        suggestGroup.addSetting((setting) => {
+            suggestSubEls.push(setting.settingEl);
             setting
                 .setName(t("settingsSyncAliasName"))
                 .setDesc(t("settingsSyncAliasDesc"))
@@ -89,13 +105,14 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                     toggle.setValue(this.plugin.settings.syncAlias ?? false).onChange(async (value) => {
                         this.plugin.settings.syncAlias = value;
                         await this.plugin.saveSettings();
-                        updateAliasSubSettings();
+                        updateSuggestSubSettings();
                     });
                 });
         });
 
-        behaviorGroup.addSetting((setting) => {
+        suggestGroup.addSetting((setting) => {
             aliasModeSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
             setting
                 .setName(t("settingsAliasSyncModeName"))
                 .setDesc(t("settingsAliasSyncModeDesc"))
@@ -108,13 +125,14 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                         .onChange(async (value) => {
                             this.plugin.settings.aliasSyncMode = value as typeof this.plugin.settings.aliasSyncMode;
                             await this.plugin.saveSettings();
-                            updateAliasSubSettings();
+                            updateSuggestSubSettings();
                         });
                 });
         });
 
-        behaviorGroup.addSetting((setting) => {
+        suggestGroup.addSetting((setting) => {
             aliasSepSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
             setting
                 .setName(t("settingsAliasSeparatorName"))
                 .setDesc(t("settingsAliasSeparatorDesc"))
@@ -126,8 +144,9 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
-        behaviorGroup.addSetting((setting) => {
+        suggestGroup.addSetting((setting) => {
             aliasTitlePropSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
             setting
                 .setName(t("settingsAliasTitlePropertyName"))
                 .setDesc(t("settingsAliasTitlePropertyDesc"))
@@ -140,7 +159,7 @@ export class BetterLinksSettingTab extends PluginSettingTab {
         });
 
         // 初始化可见状态
-        updateAliasSubSettings();
+        updateSuggestSubSettings();
 
 		const linkTypeGroup = new SettingGroup(containerEl)
 				.setHeading(t("settingsSupportedTypes"))
