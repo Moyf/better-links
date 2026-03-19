@@ -11,6 +11,8 @@ export interface PopoverEditorState {
 	copyUrlLabel: string;
 	copyUrlIcon: string;
 	showDelete: boolean;
+	showEmbedToggle: boolean;
+	isEmbedded: boolean;
 }
 
 export interface PopoverEditorEvents {
@@ -18,7 +20,8 @@ export interface PopoverEditorEvents {
 	onOpen: (displayText: string, destination: string) => void;
 	onCopyMarkdown: (displayText: string, destination: string) => void;
 	onCopyUrl: (destination: string) => void;
-	onDelete: () => void;
+	onDelete: (forceRemoveAll: boolean) => void;
+	onToggleEmbed: () => void;
 	onClose: () => void;
 	onDiscard: () => void;
 	onDestinationInput?: (destination: string) => void;
@@ -33,6 +36,7 @@ export class PopoverEditor {
 	private readonly destinationInputEl: HTMLInputElement;
 	private readonly copyMarkdownButtonEl: HTMLButtonElement;
 	private readonly copyUrlButtonEl: HTMLButtonElement;
+	private readonly embedButtonEl: HTMLButtonElement;
 	private readonly deleteButtonEl: HTMLButtonElement;
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
@@ -72,6 +76,10 @@ export class PopoverEditor {
 		const leftEl = footerEl.createDiv({ cls: "better-links-popover__footer-left" });
 		const rightEl = footerEl.createDiv({ cls: "better-links-popover__footer-right" });
 
+		this.embedButtonEl = this.createIconButton(leftEl, "file-braces", this.t("popoverAriaToggleEmbed"), () => {
+			this.events.onToggleEmbed();
+		});
+
 		this.createIconButton(leftEl, "external-link", this.t("popoverAriaOpen"), () => {
 			this.events.onOpen(this.displayInputEl.value, this.destinationInputEl.value);
 		});
@@ -89,8 +97,9 @@ export class PopoverEditor {
 			this.events.onCopyUrl(this.destinationInputEl.value);
 		});
 
-		this.deleteButtonEl = this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), () => {
-			this.events.onDelete();
+		this.deleteButtonEl = this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), (event) => {
+			const forceRemoveAll = event instanceof MouseEvent && (event.ctrlKey || event.metaKey);
+			this.events.onDelete(forceRemoveAll);
 		}, true);
 	}
 
@@ -117,6 +126,13 @@ export class PopoverEditor {
 		this.destinationInputEl.toggleClass("mod-warning", hasWarning);
 	}
 
+	updateEmbedState(isEmbedded: boolean): void {
+		this.embedButtonEl.toggleClass("is-active", isEmbedded);
+		const label = isEmbedded ? this.t("popoverAriaEmbedOn") : this.t("popoverAriaEmbedOff");
+		this.embedButtonEl.setAttribute("aria-label", label);
+		this.embedButtonEl.setAttribute("title", label);
+	}
+
 	isOpen(): boolean {
 		return this.rootEl.isShown();
 	}
@@ -138,6 +154,10 @@ export class PopoverEditor {
 		this.copyUrlButtonEl.setAttribute("title", state.copyUrlLabel || copyUrlLabel);
 		setIcon(this.copyUrlButtonEl, state.copyUrlIcon);
 		this.deleteButtonEl.toggleClass("is-hidden", !state.showDelete);
+
+		/* Embed toggle button */
+		this.embedButtonEl.toggleClass("is-hidden", !state.showEmbedToggle);
+		this.updateEmbedState(state.isEmbedded);
 
 		/* Place off-screen first to let Popper compute without flash */
 		this.rootEl.setCssStyles({ visibility: "hidden" });
@@ -181,7 +201,7 @@ export class PopoverEditor {
 		parent: HTMLElement,
 		icon: string,
 		ariaLabel: string,
-		onClick: () => void,
+		onClick: (event: MouseEvent) => void,
 		danger = false,
 	): HTMLButtonElement {
 		const btn = parent.createEl("button", {
