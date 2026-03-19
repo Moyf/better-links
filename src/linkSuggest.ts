@@ -32,16 +32,26 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	private _active = false;
 	/** 选中时临时屏蔽 input 事件触发 suggest，防止选中后下拉重开 */
 	private _suppressNext = false;
+	private sourcePath: string;
+	private settings: BetterLinksSettings;
 
 	constructor(
 		app: App,
 		private readonly inputEl: HTMLInputElement,
-		private readonly sourcePath: string,
+		sourcePath: string,
 		private readonly callbacks: LinkSuggestCallbacks,
-		private readonly settings: BetterLinksSettings,
+		settings: BetterLinksSettings,
 	) {
 		super(app, inputEl);
 		this.limit = MAX_SUGGESTIONS;
+		this.sourcePath = sourcePath;
+		this.settings = settings;
+	}
+
+	/** 每次打开 popover 时更新上下文，复用同一实例避免重复创建 suggestion-container */
+	updateContext(sourcePath: string, settings: BetterLinksSettings): void {
+		this.sourcePath = sourcePath;
+		this.settings = settings;
 	}
 
 	get isActive(): boolean {

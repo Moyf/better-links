@@ -17,8 +17,8 @@ export class LinkEditManager {
 	private destinationInvalid = false;
 	/** debounce 定时器 */
 	private validateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	/** 当前激活的链接目标 suggest 实例 */
-	private suggest: LinkDestinationSuggest | null = null;
+	/** 链接目标 suggest 实例（单例，复用避免重复创建 suggestion-container） */
+	private readonly suggest: LinkDestinationSuggest;
 
 	constructor(private readonly plugin: BetterLinksPlugin) {
 		this.popoverEditor = new PopoverEditor({
@@ -52,6 +52,24 @@ export class LinkEditManager {
 				this.scheduleValidation(destination);
 			},
 		}, this.plugin.t.bind(this.plugin));
+
+		// 单例：在 constructor 里创建，绑定到 destinationInput
+		this.suggest = new LinkDestinationSuggest(
+			this.plugin.app,
+			this.popoverEditor.destinationInput,
+			"",
+			{
+				setDisplayText: (value) => {
+					this.popoverEditor.setDisplayText(value);
+				},
+				onSuggestionSelected: () => {
+					this.cancelPendingValidation();
+					this.setWarning(false);
+				},
+			},
+			this.plugin.settings,
+		);
+		this.popoverEditor.setSuggestActiveChecker(() => this.suggest.isActive);
 	}
 
 	isOpen(): boolean {
@@ -60,7 +78,7 @@ export class LinkEditManager {
 
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
 		this.cancelPendingValidation();
-		this.destroySuggest();
+		this.suggest.close();
 		this.destinationInvalid = false;
 		this.activeSession = { match, referenceEl };
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
@@ -75,28 +93,13 @@ export class LinkEditManager {
 			showDelete: !isImage,
 		});
 
-		// 只对 wiki / markdown 非图片链接启用 suggest
+		// 只对 wiki / markdown 非图片链接更新 suggest 上下文
 		const shouldSuggest =
 			(this.plugin.settings.enableLinkSuggestions ?? true) &&
 			(match.type === "wiki" || match.type === "markdown");
 
 		if (shouldSuggest) {
-			this.suggest = new LinkDestinationSuggest(
-				this.plugin.app,
-				this.popoverEditor.destinationInput,
-				match.sourcePath,
-				{
-					setDisplayText: (value) => {
-						this.popoverEditor.setDisplayText(value);
-					},
-					onSuggestionSelected: () => {
-						this.cancelPendingValidation();
-						this.setWarning(false);
-					},
-				},
-				this.plugin.settings,
-			);
-			this.popoverEditor.setSuggestActiveChecker(() => this.suggest?.isActive ?? false);
+			this.suggest.updateContext(match.sourcePath, this.plugin.settings);
 		}
 	}
 
@@ -106,7 +109,7 @@ export class LinkEditManager {
 
 	destroy(): void {
 		this.cancelPendingValidation();
-		this.destroySuggest();
+		this.suggest.close();
 		this.activeSession = null;
 		this.popoverEditor.destroy();
 	}
@@ -120,7 +123,7 @@ export class LinkEditManager {
 			this.save(displayText, destination, silent);
 		}
 		this.cancelPendingValidation();
-		this.destroySuggest();
+		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
@@ -129,7 +132,7 @@ export class LinkEditManager {
 	/** 丢弃编辑，直接关闭（ESC 触发）。 */
 	private discardAndClose(): void {
 		this.cancelPendingValidation();
-		this.destroySuggest();
+		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
@@ -223,12 +226,8 @@ export class LinkEditManager {
 		}
 	}
 
-	private destroySuggest(): void {
-		if (this.suggest) {
-			this.suggest.close();
-			this.suggest = null;
-		}
-		this.popoverEditor.setSuggestActiveChecker(null);
+	private closeSuggest(): void {
+		this.suggest.close();
 	}
 
 	/** 校验内部链接目标是否存在 */
