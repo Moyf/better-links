@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.0.4] - 2026-03-19
+
+### English
+
+#### Added
+
+- New setting "Validate internal links" (enabled by default): when editing an internal link target, automatically check whether the destination file or heading exists via Obsidian's metadataCache with 300ms debounce.
+- If validation fails, the destination input gets a warning style and saving is blocked with a Notice.
+- ESC now discards edits and closes the popover without saving.
+
+#### Changed
+
+- Increased spacing between the two input fields in the popover editor.
+- Added right-side boundary buffer (4px) for edge protection, matching the existing left-side buffer.
+
+### 中文
+
+#### 新增
+
+- 新增"校验内部链接有效性"设置（默认启用）：编辑内部链接目标时，自动通过 Obsidian metadataCache 检测对应文件或标题是否存在（300ms 防抖）。
+- 校验失败时，目标输入框显示警告样式，阻止保存并弹出 Notice 提示。
+- ESC 键现在放弃编辑并直接关闭弹窗，不再保存改动。
+
+#### 变更
+
+- 增大弹窗编辑器中两个输入框的间距。
+- 边界保护新增右侧缓冲区（4px），与左侧保持一致。
+
 ## [1.0.3] - 2026-03-19
 
 ### English
