@@ -121,3 +121,30 @@
 .better-links-settings-group {
 	margin-bottom: 1.5rem;
 }
+
+/* ── Link suggest dropdown items ── */
+.better-links-suggest__title {
+	font-size: var(--font-ui-small);
+	line-height: 1.4;
+	color: var(--text-normal);
+}
+
+.better-links-suggest__path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: 1px;
+}
+
+.better-links-suggest__heading-prefix {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+/* 非 Markdown 文件条目降色 */
+.better-links-suggest__item--non-md .better-links-suggest__title {
+	color: var(--text-muted);
+}
+
+.better-links-suggest__item--non-md .better-links-suggest__path {
+	color: var(--text-faint);
+}

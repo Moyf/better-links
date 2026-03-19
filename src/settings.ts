@@ -1,5 +1,7 @@
 export type ExternalLinkOpenMode = "browser" | "obsidian";
 export type DeleteLinkBehavior = "preserve-text" | "remove-all";
+/** 选中 suggest 时别名的生成模式 */
+export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
 
 export interface BetterLinksSettings {
 	enabled: boolean;
@@ -13,6 +15,16 @@ export interface BetterLinksSettings {
     edgeProtection?: boolean;
     /** 是否在编辑内部链接时校验目标文件/标题是否存在 */
     validateInternalLinks?: boolean;
+    /** 是否在编辑内部链接目标时显示笔记和标题的自动补全建议 */
+    enableLinkSuggestions?: boolean;
+    /** 从 suggest 选中文件/标题时，是否自动同步别名（displayText） */
+    syncAlias?: boolean;
+    /** 别名生成模式（syncAlias 为 true 时有效） */
+    aliasSyncMode?: AliasSyncMode;
+    /** 合并 文件名 + 标题 时的连接符（默认 " > "） */
+    aliasSeparator?: string;
+    /** 读取文件名的 frontmatter 属性名（默认 "title"，找不到时 fallback 到文件名） */
+    aliasTitleProperty?: string;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -25,4 +37,9 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
 	deleteLinkBehavior: "preserve-text",
     edgeProtection: true,
     validateInternalLinks: true,
+    enableLinkSuggestions: true,
+    syncAlias: false,
+    aliasSyncMode: "heading-only",
+    aliasSeparator: " > ",
+    aliasTitleProperty: "title",
 };

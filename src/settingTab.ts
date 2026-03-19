@@ -55,6 +55,112 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
+        // ── 链接建议 group ────────────────────────────────────────────────────
+        const suggestGroup = new SettingGroup(containerEl)
+            .setHeading(t("settingsLinkSuggestionsGroup"))
+            .addClass("better-links-settings-group");
+
+        // 子项元素列表（启用开关关闭时全部隐藏）
+        const suggestSubEls: HTMLElement[] = [];
+
+        const updateSuggestSubSettings = () => {
+            const enabled = this.plugin.settings.enableLinkSuggestions ?? true;
+            const syncEnabled = this.plugin.settings.syncAlias ?? false;
+            const mode = this.plugin.settings.aliasSyncMode ?? "heading-only";
+            const showAliasSub = syncEnabled && mode !== "heading-only";
+            for (const el of suggestSubEls) {
+                el.toggleClass("is-hidden", !enabled);
+            }
+            if (enabled) {
+                aliasModeSettingEl?.toggleClass("is-hidden", !syncEnabled);
+                aliasSepSettingEl?.toggleClass("is-hidden", !showAliasSub);
+                aliasTitlePropSettingEl?.toggleClass("is-hidden", !showAliasSub);
+            }
+        };
+
+        suggestGroup.addSetting((setting) => {
+            setting
+                .setName(t("settingsEnableLinkSuggestionsName"))
+                .setDesc(t("settingsEnableLinkSuggestionsDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.enableLinkSuggestions ?? true).onChange(async (value) => {
+                        this.plugin.settings.enableLinkSuggestions = value;
+                        await this.plugin.saveSettings();
+                        updateSuggestSubSettings();
+                    });
+                });
+        });
+
+        // ── 别名同步子设置 ──────────────────────────────────────────────────
+        let aliasModeSettingEl: HTMLElement | null = null;
+        let aliasSepSettingEl: HTMLElement | null = null;
+        let aliasTitlePropSettingEl: HTMLElement | null = null;
+
+        suggestGroup.addSetting((setting) => {
+            suggestSubEls.push(setting.settingEl);
+            setting
+                .setName(t("settingsSyncAliasName"))
+                .setDesc(t("settingsSyncAliasDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.syncAlias ?? false).onChange(async (value) => {
+                        this.plugin.settings.syncAlias = value;
+                        await this.plugin.saveSettings();
+                        updateSuggestSubSettings();
+                    });
+                });
+        });
+
+        suggestGroup.addSetting((setting) => {
+            aliasModeSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
+            setting
+                .setName(t("settingsAliasSyncModeName"))
+                .setDesc(t("settingsAliasSyncModeDesc"))
+                .addDropdown((dropdown) => {
+                    dropdown
+                        .addOption("heading-only", t("settingsAliasModeHeadingOnly"))
+                        .addOption("filename-then-heading", t("settingsAliasModeFileThenHeading"))
+                        .addOption("heading-then-filename", t("settingsAliasModeHeadingThenFile"))
+                        .setValue(this.plugin.settings.aliasSyncMode ?? "heading-only")
+                        .onChange(async (value) => {
+                            this.plugin.settings.aliasSyncMode = value as typeof this.plugin.settings.aliasSyncMode;
+                            await this.plugin.saveSettings();
+                            updateSuggestSubSettings();
+                        });
+                });
+        });
+
+        suggestGroup.addSetting((setting) => {
+            aliasSepSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
+            setting
+                .setName(t("settingsAliasSeparatorName"))
+                .setDesc(t("settingsAliasSeparatorDesc"))
+                .addText((text) => {
+                    text.setValue(this.plugin.settings.aliasSeparator ?? " > ").onChange(async (value) => {
+                        this.plugin.settings.aliasSeparator = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
+        suggestGroup.addSetting((setting) => {
+            aliasTitlePropSettingEl = setting.settingEl;
+            suggestSubEls.push(setting.settingEl);
+            setting
+                .setName(t("settingsAliasTitlePropertyName"))
+                .setDesc(t("settingsAliasTitlePropertyDesc"))
+                .addText((text) => {
+                    text.setPlaceholder("title").setValue(this.plugin.settings.aliasTitleProperty ?? "title").onChange(async (value) => {
+                        this.plugin.settings.aliasTitleProperty = value || "title";
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
+        // 初始化可见状态
+        updateSuggestSubSettings();
+
 		const linkTypeGroup = new SettingGroup(containerEl)
 				.setHeading(t("settingsSupportedTypes"))
 			.addClass("better-links-settings-group");

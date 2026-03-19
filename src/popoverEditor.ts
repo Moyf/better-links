@@ -37,6 +37,7 @@ export class PopoverEditor {
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
+	private isSuggestActiveChecker: (() => boolean) | null = null;
 
 	constructor(
 		private readonly events: PopoverEditorEvents,
@@ -98,6 +99,18 @@ export class PopoverEditor {
 			displayText: this.displayInputEl.value,
 			destination: this.destinationInputEl.value,
 		};
+	}
+
+	get destinationInput(): HTMLInputElement {
+		return this.destinationInputEl;
+	}
+
+	setDisplayText(value: string): void {
+		this.displayInputEl.value = value;
+	}
+
+	setSuggestActiveChecker(fn: (() => boolean) | null): void {
+		this.isSuggestActiveChecker = fn;
 	}
 
 	setDestinationWarning(hasWarning: boolean): void {
@@ -188,10 +201,15 @@ export class PopoverEditor {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
 			if (this.rootEl.contains(target) || referenceEl.contains(target)) return;
+			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
+			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
 			this.events.onClose();
 		};
 
 		this.keydownHandler = (event: KeyboardEvent) => {
+			// While suggest dropdown is active, let AbstractInputSuggest handle navigation
+			if (this.isSuggestActiveChecker?.()) return;
+
 			if (event.key === "Escape") {
 				event.preventDefault();
 				this.events.onDiscard();
