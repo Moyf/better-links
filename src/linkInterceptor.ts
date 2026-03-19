@@ -49,17 +49,43 @@ export class LinkInterceptor {
 			return;
 		}
 
+		// 如果当前链接在选中的文本中，不处理
 		const position = markdownView.editor.offsetToPos(documentOffset);
+		
+		for (const sel of editorView.state.selection.ranges) {
+			// 检查点击位置（文档偏移）是否在任何选中範圍内
+			if (documentOffset >= sel.from && documentOffset < sel.to) {
+				return;
+			}
+		}
+		
+
 		const lineText = markdownView.editor.getLine(position.line);
-		const match =
-			findLinkAtOffset(lineText, position.ch, this.plugin.settings) ??
-			(position.ch > 0 ? findLinkAtOffset(lineText, position.ch - 1, this.plugin.settings) : null);
+		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
 
 		if (!match) {
 			return;
 		}
 
 		const editorMatch = withEditorRange(match, position.line, markdownView.file.path);
+
+		// 验证鼠标坐标是否真的在链接范围内
+		const matchStart = editorView.coordsAtPos(editorView.state.doc.line(position.line + 1).from + match.start);
+		const matchEnd = editorView.coordsAtPos(editorView.state.doc.line(position.line + 1).from + match.end);
+		
+		if (!matchStart || !matchEnd) {
+			return;
+		}
+
+		// 检查鼠标Y坐标是否在链接高度范围内
+		if (event.clientY < matchStart.top || event.clientY > matchStart.bottom) {
+			return;
+		}
+
+		// 严格检查：鼠标X坐标必须在链接的左右边界之间
+		if (event.clientX > matchEnd.right) {
+			return;
+		}
 
 		event.preventDefault();
 		event.stopPropagation();
