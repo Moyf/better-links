@@ -1,5 +1,6 @@
 import { Notice, type App } from "obsidian";
 import { defaultDisplayText, deletionReplacement, isLikelyExternalDestination, isLikelyInternalDestination, toMarkdownSnippet, type EditorLinkMatch } from "./linkDetector";
+import { createTranslator } from "./i18n";
 import type { BetterLinksSettings } from "./settings";
 
 interface ElectronModule {
@@ -16,10 +17,11 @@ export interface EditableLinkValues {
 	destination: string;
 }
 
+const t = createTranslator(navigator.language || "en-US");
 export async function openLink(app: App, match: EditorLinkMatch, values: EditableLinkValues, settings: BetterLinksSettings): Promise<void> {
 	const destination = values.destination.trim();
 	if (!destination) {
-		new Notice("Link destination is empty.");
+		new Notice(t("noticeEmptyDestination"));
 		return;
 	}
 
@@ -39,11 +41,11 @@ export async function openLink(app: App, match: EditorLinkMatch, values: Editabl
 
 export async function copyMarkdown(match: EditorLinkMatch, values: EditableLinkValues): Promise<void> {
 	const markdown = toMarkdownSnippet(match, values.displayText, values.destination);
-	await copyText(markdown, "Copied Markdown link.");
+	await copyText(markdown, t("noticeCopiedMarkdown"));
 }
 
 export async function copyUrl(url: string): Promise<void> {
-	await copyText(url.trim(), "Copied URL.");
+	await copyText(url.trim(), t("noticeCopiedUrl"));
 }
 
 export function buildDeletionText(match: EditorLinkMatch, settings: BetterLinksSettings): string {
@@ -73,7 +75,7 @@ async function openInSystemBrowser(url: string): Promise<boolean> {
 
 async function copyText(value: string, successMessage: string): Promise<void> {
 	if (!value) {
-		new Notice("Nothing to copy.");
+		new Notice(t("noticeNothingToCopy"));
 		return;
 	}
 
@@ -90,7 +92,7 @@ async function copyText(value: string, successMessage: string): Promise<void> {
 		}
 	}
 
-	new Notice("Copy failed.");
+	new Notice(t("noticeCopyFailed"));
 }
 
 function getElectronModule(): ElectronModule | null {

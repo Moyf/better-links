@@ -71,7 +71,7 @@ export class LinkInterceptor {
 		}
 
 		if (!target.isConnected) {
-			new Notice("The clicked link is no longer available.");
+			new Notice(this.plugin.t("noticeClickedLinkMissing"));
 			return;
 		}
 

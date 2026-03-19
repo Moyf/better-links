@@ -1,5 +1,6 @@
 import { createPopper, type Instance } from "@popperjs/core";
 import { setIcon } from "obsidian";
+import type { I18nKey } from "./i18n";
 
 export interface PopoverEditorState {
 	displayText: string;
@@ -16,6 +17,8 @@ export interface PopoverEditorEvents {
 	onClose: () => void;
 }
 
+export type PopoverTranslateFn = (key: I18nKey) => string;
+
 export class PopoverEditor {
 	private readonly rootEl: HTMLElement;
 	private readonly typeBadgeEl: HTMLElement;
@@ -25,7 +28,10 @@ export class PopoverEditor {
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
 
-	constructor(private readonly events: PopoverEditorEvents) {
+	constructor(
+		private readonly events: PopoverEditorEvents,
+		private readonly t: PopoverTranslateFn,
+	) {
 		this.rootEl = document.body.createDiv({ cls: "better-links-popover" });
 		this.rootEl.hide();
 
@@ -38,12 +44,12 @@ export class PopoverEditor {
 
 		this.displayInputEl = formEl.createEl("input", {
 			cls: "better-links-popover__input",
-			attr: { type: "text", placeholder: "Display text" },
+			attr: { type: "text", placeholder: this.t("popoverPlaceholderDisplay") },
 		});
 
 		this.destinationInputEl = formEl.createEl("input", {
 			cls: "better-links-popover__input",
-			attr: { type: "text", placeholder: "URL or note path" },
+			attr: { type: "text", placeholder: this.t("popoverPlaceholderDestination") },
 		});
 
 		/* ── footer: left = open, right = copy + delete ── */
@@ -51,19 +57,19 @@ export class PopoverEditor {
 		const leftEl = footerEl.createDiv({ cls: "better-links-popover__footer-left" });
 		const rightEl = footerEl.createDiv({ cls: "better-links-popover__footer-right" });
 
-		this.createIconButton(leftEl, "external-link", "Open link", () => {
+		this.createIconButton(leftEl, "external-link", this.t("popoverAriaOpen"), () => {
 			this.events.onOpen(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
-		this.createIconButton(rightEl, "copy", "Copy as Markdown", () => {
+		this.createIconButton(rightEl, "copy", this.t("popoverAriaCopyMarkdown"), () => {
 			this.events.onCopyMarkdown(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
-		this.createIconButton(rightEl, "link", "Copy URL", () => {
+		this.createIconButton(rightEl, "link", this.t("popoverAriaCopyUrl"), () => {
 			this.events.onCopyUrl(this.destinationInputEl.value);
 		});
 
-		this.createIconButton(rightEl, "trash-2", "Delete link", () => {
+		this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), () => {
 			this.events.onDelete();
 		}, true);
 	}

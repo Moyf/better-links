@@ -1,4 +1,5 @@
 import { MarkdownView, Plugin } from "obsidian";
+import { createTranslator, type I18nKey } from "./i18n";
 import { LinkEditManager } from "./linkEditManager";
 import { LinkInterceptor } from "./linkInterceptor";
 import { BetterLinksSettingTab } from "./settingTab";
@@ -6,8 +7,13 @@ import { BetterLinksSettings, DEFAULT_SETTINGS } from "./settings";
 
 export default class BetterLinksPlugin extends Plugin {
 	settings: BetterLinksSettings;
+	private readonly translate = createTranslator(navigator.language || "en-US");
 	private linkEditManager: LinkEditManager;
 	private linkInterceptor: LinkInterceptor;
+
+	t(key: I18nKey): string {
+		return this.translate(key);
+	}
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
@@ -19,7 +25,7 @@ export default class BetterLinksPlugin extends Plugin {
 
 		this.addCommand({
 			id: "close-link-editor",
-			name: "Close link editor",
+			name: this.t("commandCloseLinkEditor"),
 			checkCallback: (checking) => {
 				const isOpen = this.linkEditManager.isOpen();
 				if (checking) {

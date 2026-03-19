@@ -8,20 +8,21 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
 	display(): void {
 		const { containerEl } = this;
+			const t = this.plugin.t.bind(this.plugin);
 
 		containerEl.empty();
 		containerEl.addClass("better-links-settings");
 
-		new Setting(containerEl).setName("Link editor").setHeading();
+			new Setting(containerEl).setName(t("settingsHeading")).setHeading();
 
 		const behaviorGroup = new SettingGroup(containerEl)
-			.setHeading("General")
+				.setHeading(t("settingsGeneral"))
 			.addClass("better-links-settings-group");
 
 		behaviorGroup.addSetting((setting) => {
 			setting
-				.setName("Enable link editor")
-				.setDesc("Intercept supported links in the Markdown editor and open the floating editor.")
+					.setName(t("settingsEnableEditorName"))
+					.setDesc(t("settingsEnableEditorDesc"))
 				.addToggle((toggle) => {
 					toggle.setValue(this.plugin.settings.enabled).onChange(async (value) => {
 						this.plugin.settings.enabled = value;
@@ -31,13 +32,13 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 		});
 
 		const linkTypeGroup = new SettingGroup(containerEl)
-			.setHeading("Supported link types")
+				.setHeading(t("settingsSupportedTypes"))
 			.addClass("better-links-settings-group");
 
 		linkTypeGroup.addSetting((setting) => {
 			setting
-				.setName("Wikilinks")
-				.setDesc("Support links like [[note]] and [[note|alias]].")
+					.setName(t("settingsWikiName"))
+					.setDesc(t("settingsWikiDesc"))
 				.addToggle((toggle) => {
 					toggle.setValue(this.plugin.settings.enableWikiLinks).onChange(async (value) => {
 						this.plugin.settings.enableWikiLinks = value;
@@ -48,8 +49,8 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
 		linkTypeGroup.addSetting((setting) => {
 			setting
-				.setName("Markdown links")
-				.setDesc("Support links like [label](target).")
+					.setName(t("settingsMarkdownName"))
+					.setDesc(t("settingsMarkdownDesc"))
 				.addToggle((toggle) => {
 					toggle.setValue(this.plugin.settings.enableMarkdownLinks).onChange(async (value) => {
 						this.plugin.settings.enableMarkdownLinks = value;
@@ -60,8 +61,8 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
 		linkTypeGroup.addSetting((setting) => {
 			setting
-				.setName("Plain web links")
-				.setDesc("Support plain links like https://example.com.")
+					.setName(t("settingsUrlName"))
+					.setDesc(t("settingsUrlDesc"))
 				.addToggle((toggle) => {
 					toggle.setValue(this.plugin.settings.enablePlainUrls).onChange(async (value) => {
 						this.plugin.settings.enablePlainUrls = value;
@@ -71,17 +72,17 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 		});
 
 		const actionGroup = new SettingGroup(containerEl)
-			.setHeading("Actions")
+				.setHeading(t("settingsActions"))
 			.addClass("better-links-settings-group");
 
 		actionGroup.addSetting((setting) => {
 			setting
-				.setName("Open external links in")
-				.setDesc("Choose whether external web links open in the system browser or in an Obsidian window.")
+					.setName(t("settingsOpenExternalName"))
+					.setDesc(t("settingsOpenExternalDesc"))
 				.addDropdown((dropdown) => {
 					dropdown
-						.addOption("browser", "System browser")
-						.addOption("obsidian", "Obsidian window")
+							.addOption("browser", t("settingsOpenExternalBrowser"))
+							.addOption("obsidian", t("settingsOpenExternalObsidian"))
 						.setValue(this.plugin.settings.externalLinkOpenMode)
 						.onChange(async (value) => {
 							this.plugin.settings.externalLinkOpenMode = value as typeof this.plugin.settings.externalLinkOpenMode;
@@ -92,12 +93,12 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
 		actionGroup.addSetting((setting) => {
 			setting
-				.setName("Delete link behavior")
-				.setDesc("Choose whether deleting a link keeps its visible text or removes it completely.")
+					.setName(t("settingsDeleteBehaviorName"))
+					.setDesc(t("settingsDeleteBehaviorDesc"))
 				.addDropdown((dropdown) => {
 					dropdown
-						.addOption("preserve-text", "Preserve text")
-						.addOption("remove-all", "Remove everything")
+							.addOption("preserve-text", t("settingsDeletePreserve"))
+							.addOption("remove-all", t("settingsDeleteRemoveAll"))
 						.setValue(this.plugin.settings.deleteLinkBehavior)
 						.onChange(async (value) => {
 							this.plugin.settings.deleteLinkBehavior = value as typeof this.plugin.settings.deleteLinkBehavior;

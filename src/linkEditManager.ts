@@ -33,7 +33,7 @@ export class LinkEditManager {
 			onClose: () => {
 				this.saveAndClose();
 			},
-		});
+		}, this.plugin.t.bind(this.plugin));
 	}
 
 	isOpen(): boolean {
@@ -45,7 +45,7 @@ export class LinkEditManager {
 		this.popoverEditor.open(referenceEl, {
 			displayText: match.displayText,
 			destination: match.destination,
-			typeLabel: linkTypeLabel(match.type),
+			typeLabel: linkTypeLabel(match.type, this.plugin),
 		});
 	}
 
@@ -80,7 +80,7 @@ export class LinkEditManager {
 		session.match.originalText = nextText;
 		this.replaceActiveRange(nextText);
 		if (!silent) {
-			new Notice("Link updated.");
+			new Notice(this.plugin.t("noticeLinkUpdated"));
 		}
 	}
 
@@ -113,7 +113,7 @@ export class LinkEditManager {
 
 		const replacement = buildDeletionText(session.match, this.plugin.settings);
 		this.replaceActiveRange(replacement);
-		new Notice("Link removed.");
+		new Notice(this.plugin.t("noticeLinkRemoved"));
 		this.close();
 	}
 
@@ -126,7 +126,7 @@ export class LinkEditManager {
 		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
 		const editor = markdownView?.editor;
 		if (!editor) {
-			new Notice("No active editor was found.");
+			new Notice(this.plugin.t("noticeNoActiveEditor"));
 			return;
 		}
 
@@ -134,14 +134,14 @@ export class LinkEditManager {
 	}
 }
 
-function linkTypeLabel(type: EditorLinkMatch["type"]): string {
+function linkTypeLabel(type: EditorLinkMatch["type"], plugin: BetterLinksPlugin): string {
 	if (type === "wiki") {
-		return "WikiLink";
+		return plugin.t("typeLabelWiki");
 	}
 
 	if (type === "markdown") {
-		return "Markdown";
+		return plugin.t("typeLabelMarkdown");
 	}
 
-	return "URL";
+	return plugin.t("typeLabelUrl");
 }
