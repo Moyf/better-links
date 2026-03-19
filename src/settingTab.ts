@@ -43,6 +43,18 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
+        behaviorGroup.addSetting((setting) => {
+            setting
+                .setName(t("settingsValidateInternalLinksName"))
+                .setDesc(t("settingsValidateInternalLinksDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.validateInternalLinks ?? true).onChange(async (value) => {
+                        this.plugin.settings.validateInternalLinks = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
 		const linkTypeGroup = new SettingGroup(containerEl)
 				.setHeading(t("settingsSupportedTypes"))
 			.addClass("better-links-settings-group");

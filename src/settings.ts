@@ -11,6 +11,8 @@ export interface BetterLinksSettings {
 	deleteLinkBehavior: DeleteLinkBehavior;
     /** 是否启用链接边界保护，防止点击最前/最后弹窗，便于插入或追加文本 */
     edgeProtection?: boolean;
+    /** 是否在编辑内部链接时校验目标文件/标题是否存在 */
+    validateInternalLinks?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -22,4 +24,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
 	externalLinkOpenMode: "browser",
 	deleteLinkBehavior: "preserve-text",
     edgeProtection: true,
+    validateInternalLinks: true,
 };

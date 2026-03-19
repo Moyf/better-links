@@ -20,6 +20,8 @@ export interface PopoverEditorEvents {
 	onCopyUrl: (destination: string) => void;
 	onDelete: () => void;
 	onClose: () => void;
+	onDiscard: () => void;
+	onDestinationInput?: (destination: string) => void;
 }
 
 export type PopoverTranslateFn = (key: I18nKey) => string;
@@ -60,6 +62,10 @@ export class PopoverEditor {
 			attr: { type: "text", placeholder: this.t("popoverPlaceholderDestination") },
 		});
 
+		this.destinationInputEl.addEventListener("input", () => {
+			this.events.onDestinationInput?.(this.destinationInputEl.value);
+		});
+
 		/* ── footer: left = open, right = copy + delete ── */
 		const footerEl = this.rootEl.createDiv({ cls: "better-links-popover__footer" });
 		const leftEl = footerEl.createDiv({ cls: "better-links-popover__footer-left" });
@@ -94,6 +100,10 @@ export class PopoverEditor {
 		};
 	}
 
+	setDestinationWarning(hasWarning: boolean): void {
+		this.destinationInputEl.toggleClass("mod-warning", hasWarning);
+	}
+
 	isOpen(): boolean {
 		return this.rootEl.isShown();
 	}
@@ -102,6 +112,7 @@ export class PopoverEditor {
 		this.typeBadgeEl.setText(state.typeLabel);
 		this.displayInputEl.value = state.displayText;
 		this.destinationInputEl.value = state.destination;
+		this.destinationInputEl.removeClass("mod-warning");
 		this.displayInputEl.placeholder = state.isImage
 			? this.t("popoverPlaceholderImageSize")
 			: this.t("popoverPlaceholderDisplay");
@@ -181,7 +192,10 @@ export class PopoverEditor {
 		};
 
 		this.keydownHandler = (event: KeyboardEvent) => {
-			if (event.key === "Escape" || event.key === "Enter") {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				this.events.onDiscard();
+			} else if (event.key === "Enter") {
 				event.preventDefault();
 				this.events.onClose();
 			}

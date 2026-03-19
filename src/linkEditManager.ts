@@ -12,6 +12,10 @@ interface ActiveSession {
 export class LinkEditManager {
 	private readonly popoverEditor: PopoverEditor;
 	private activeSession: ActiveSession | null = null;
+	/** 当前 destination 输入框是否处于警告状态（校验失败） */
+	private destinationInvalid = false;
+	/** debounce 定时器 */
+	private validateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(private readonly plugin: BetterLinksPlugin) {
 		this.popoverEditor = new PopoverEditor({
@@ -38,6 +42,12 @@ export class LinkEditManager {
 			onClose: () => {
 				this.saveAndClose();
 			},
+			onDiscard: () => {
+				this.discardAndClose();
+			},
+			onDestinationInput: (destination) => {
+				this.scheduleValidation(destination);
+			},
 		}, this.plugin.t.bind(this.plugin));
 	}
 
@@ -46,6 +56,8 @@ export class LinkEditManager {
 	}
 
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
+		this.cancelPendingValidation();
+		this.destinationInvalid = false;
 		this.activeSession = { match, referenceEl };
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		this.popoverEditor.open(referenceEl, {
@@ -65,6 +77,7 @@ export class LinkEditManager {
 	}
 
 	destroy(): void {
+		this.cancelPendingValidation();
 		this.activeSession = null;
 		this.popoverEditor.destroy();
 	}
@@ -73,8 +86,20 @@ export class LinkEditManager {
 	private saveAndClose(): void {
 		if (this.activeSession && this.popoverEditor.isOpen()) {
 			const { displayText, destination } = this.popoverEditor.getValues();
-			this.save(displayText, destination, true);
+			// 校验失败时需要明确告知用户，不能静默
+			const silent = !this.destinationInvalid;
+			this.save(displayText, destination, silent);
 		}
+		this.cancelPendingValidation();
+		this.destinationInvalid = false;
+		this.activeSession = null;
+		this.popoverEditor.close();
+	}
+
+	/** 丢弃编辑，直接关闭（ESC 触发）。 */
+	private discardAndClose(): void {
+		this.cancelPendingValidation();
+		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
 	}
@@ -82,6 +107,14 @@ export class LinkEditManager {
 	private save(displayText: string, destination: string, silent = false): void {
 		const session = this.activeSession;
 		if (!session) return;
+
+		// 如果目标校验失败，阻止保存
+		if (this.destinationInvalid) {
+			if (!silent) {
+				new Notice(this.plugin.t("noticeInternalLinkNotFound"));
+			}
+			return;
+		}
 
 		const nextText = serializeEditedLink(session.match, displayText, destination);
 		if (nextText === session.match.originalText) return; // no change
@@ -142,6 +175,99 @@ export class LinkEditManager {
 		}
 
 		editor.replaceRange(replacement, session.match.range.from, session.match.range.to, "better-links");
+	}
+
+	/** 调度 debounce 校验（300ms） */
+	private scheduleValidation(destination: string): void {
+		this.cancelPendingValidation();
+		this.validateDebounceTimer = setTimeout(() => {
+			this.validateDestination(destination);
+		}, 300);
+	}
+
+	private cancelPendingValidation(): void {
+		if (this.validateDebounceTimer !== null) {
+			clearTimeout(this.validateDebounceTimer);
+			this.validateDebounceTimer = null;
+		}
+	}
+
+	/** 校验内部链接目标是否存在 */
+	private validateDestination(destination: string): void {
+		const session = this.activeSession;
+		if (!session) return;
+
+		// 只校验内部链接类型
+		const isInternal = session.match.type === "wiki" || session.match.type === "imageWiki" ||
+			session.match.type === "imageMarkdown" || session.match.type === "markdown";
+		if (!isInternal) return;
+
+		// 未启用校验功能
+		if (!(this.plugin.settings.validateInternalLinks ?? true)) return;
+
+		const trimmed = destination.trim();
+		if (!trimmed) {
+			// 空目标不触发警告（有专门的"目标为空"逻辑）
+			this.setWarning(false);
+			return;
+		}
+
+		// 外部链接跳过
+		if (/^(https?:|mailto:|obsidian:)/i.test(trimmed)) {
+			this.setWarning(false);
+			return;
+		}
+
+		const valid = this.checkInternalTarget(trimmed, session.match.sourcePath);
+		this.setWarning(!valid);
+	}
+
+	/**
+	 * 检查内部链接目标是否存在。
+	 * 支持格式：
+	 *  - `note`             纯文件名
+	 *  - `folder/note`      路径
+	 *  - `note#heading`     文件内标题
+	 *  - `#heading`         当前文件内标题
+	 *  - `note.png` 等图片扩展名
+	 */
+	private checkInternalTarget(destination: string, sourcePath: string): boolean {
+		const hashIndex = destination.indexOf("#");
+		const filePart = hashIndex >= 0 ? destination.slice(0, hashIndex) : destination;
+		const headingPart = hashIndex >= 0 ? destination.slice(hashIndex + 1) : null;
+
+		// `#heading` 格式：锚点指向当前文件
+		if (filePart === "" && headingPart !== null) {
+			const currentFile = this.plugin.app.vault.getAbstractFileByPath(sourcePath);
+			if (!currentFile || !("stat" in currentFile)) return false;
+			return this.headingExistsInFile(currentFile as Parameters<typeof this.plugin.app.metadataCache.getFileCache>[0], headingPart);
+		}
+
+		// 通过 metadataCache 解析 linkpath（支持模糊匹配和别名）
+		const resolvedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(filePart, sourcePath);
+
+		if (!resolvedFile) return false;
+
+		// 没有锚点，文件存在即可
+		if (headingPart === null || headingPart === "") return true;
+
+		// 校验标题是否存在
+		return this.headingExistsInFile(resolvedFile, headingPart);
+	}
+
+	private headingExistsInFile(
+		file: Parameters<typeof this.plugin.app.metadataCache.getFileCache>[0],
+		heading: string,
+	): boolean {
+		const cache = this.plugin.app.metadataCache.getFileCache(file);
+		if (!cache?.headings) return false;
+		const normalized = heading.toLowerCase();
+		return cache.headings.some((h) => h.heading.toLowerCase() === normalized);
+	}
+
+	private setWarning(hasWarning: boolean): void {
+		this.destinationInvalid = hasWarning;
+		this.popoverEditor.setDestinationWarning(hasWarning);
 	}
 }
 

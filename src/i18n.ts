@@ -1,8 +1,11 @@
 export type I18nKey = keyof typeof ZH_CN;
 
 const ZH_CN = {
-		settingsEdgeProtectionName: "启用边界保护",
-		settingsEdgeProtectionDesc: "防止在链接最前/最后点击时弹窗，便于插入或追加文本。",
+    settingsEdgeProtectionName: "启用边界保护",
+    settingsEdgeProtectionDesc: "防止在链接最前/最后点击时弹窗，便于插入或追加文本。",
+    settingsValidateInternalLinksName: "校验内部链接有效性",
+    settingsValidateInternalLinksDesc: "修改内部链接目标时，自动检测对应文件或标题是否存在。若不存在，则显示警告并阻止保存。",
+    noticeInternalLinkNotFound: "目标文件或标题不存在，未保存。（可在设置中关闭自动检查）",
 	commandCloseLinkEditor: "关闭链接编辑器",
 	noticeLinkUpdated: "链接已更新。",
 	noticeLinkRemoved: "链接已删除。",
@@ -54,8 +57,11 @@ const ZH_CN = {
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
-		settingsEdgeProtectionName: "Enable boundary protection",
-		settingsEdgeProtectionDesc: "Prevent popup when clicking at the very start or end of a link, so you can insert or append text easily.",
+    settingsEdgeProtectionName: "Enable boundary protection",
+    settingsEdgeProtectionDesc: "Prevent popup when clicking at the very start or end of a link, so you can insert or append text easily.",
+    settingsValidateInternalLinksName: "Validate internal links",
+    settingsValidateInternalLinksDesc: "When editing an internal link target, check whether the target file or heading exists. If not, show a warning and block saving.",
+    noticeInternalLinkNotFound: "Target file or heading not found. Changes not saved. (You can disable auto-validation in settings)",
 	commandCloseLinkEditor: "Close link editor",
 	noticeLinkUpdated: "Link updated.",
 	noticeLinkRemoved: "Link removed.",

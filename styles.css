@@ -30,7 +30,7 @@
 .better-links-popover__form {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 6px;
 }
 
 .better-links-popover__input {
@@ -47,6 +47,16 @@
 	border-color: var(--interactive-accent);
 	outline: none;
 	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+}
+
+.better-links-popover__input.mod-warning {
+	border-color: var(--text-error);
+	background: color-mix(in srgb, var(--text-error) 8%, var(--background-primary));
+}
+
+.better-links-popover__input.mod-warning:focus {
+	border-color: var(--text-error);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-error) 20%, transparent);
 }
 
 /* footer with icon buttons */
