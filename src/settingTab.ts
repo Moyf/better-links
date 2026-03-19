@@ -2,6 +2,8 @@ import { App, PluginSettingTab, Setting, SettingGroup } from "obsidian";
 import type BetterLinksPlugin from "./main";
 
 export class BetterLinksSettingTab extends PluginSettingTab {
+	icon: string = "link";
+
 	constructor(app: App, private readonly plugin: BetterLinksPlugin) {
 		super(app, plugin);
 	}
