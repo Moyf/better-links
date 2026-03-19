@@ -79,9 +79,13 @@ export class LinkInterceptor {
 		if ((this.plugin.settings.edgeProtection ?? true) && matchStart && matchEnd) {
 			// 左侧缓冲区：4px 内点击视为插入，不弹窗
 			const LEFT_BUFFER = 4;
+            const RIGHT_BUFFER = 4;
 			if (Math.abs(documentOffset - matchStartOffset) <= LEFT_BUFFER && event.clientX <= matchStart.left + LEFT_BUFFER) {
 				return;
 			}
+            if (Math.abs(documentOffset - (lineStartOffset + match.end)) <= RIGHT_BUFFER && event.clientX >= matchEnd.right - RIGHT_BUFFER) {
+                return;
+            }
 			// 鼠标 Y 坐标必须在链接行高范围内
 			if (event.clientY < matchStart.top || event.clientY > matchStart.bottom) {
 				return;
