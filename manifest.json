@@ -1,7 +1,7 @@
 {
 	"id": "better-links",
 	"name": "Better Links",
-	"version": "1.0.5",
+	"version": "1.1.0",
 	"minAppVersion": "1.11.0",
 	"description": "Enhanced link editing for Obsidian with floating editor popover. Click links to edit their display text and URL with quick action buttons.",
 	"author": "Moyf",
