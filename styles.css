@@ -99,6 +99,10 @@
 	height: 16px;
 }
 
+.better-links-popover__icon-btn.is-hidden {
+	display: none;
+}
+
 /* settings page spacing */
 .better-links-settings h2 {
 	margin-bottom: 1rem;

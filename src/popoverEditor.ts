@@ -7,6 +7,10 @@ export interface PopoverEditorState {
 	destination: string;
 	typeLabel: string;
 	isImage: boolean;
+	copyMarkdownLabel: string;
+	copyUrlLabel: string;
+	copyUrlIcon: string;
+	showDelete: boolean;
 }
 
 export interface PopoverEditorEvents {
@@ -25,6 +29,9 @@ export class PopoverEditor {
 	private readonly typeBadgeEl: HTMLElement;
 	private readonly displayInputEl: HTMLInputElement;
 	private readonly destinationInputEl: HTMLInputElement;
+	private readonly copyMarkdownButtonEl: HTMLButtonElement;
+	private readonly copyUrlButtonEl: HTMLButtonElement;
+	private readonly deleteButtonEl: HTMLButtonElement;
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
@@ -67,15 +74,15 @@ export class PopoverEditor {
 			text: this.t("popoverHintCtrlClick"),
 		});
 
-		this.createIconButton(rightEl, "copy", this.t("popoverAriaCopyMarkdown"), () => {
+		this.copyMarkdownButtonEl = this.createIconButton(rightEl, "copy", this.t("popoverAriaCopyMarkdown"), () => {
 			this.events.onCopyMarkdown(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
-		this.createIconButton(rightEl, "link", this.t("popoverAriaCopyUrl"), () => {
+		this.copyUrlButtonEl = this.createIconButton(rightEl, "link", this.t("popoverAriaCopyUrl"), () => {
 			this.events.onCopyUrl(this.destinationInputEl.value);
 		});
 
-		this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), () => {
+		this.deleteButtonEl = this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), () => {
 			this.events.onDelete();
 		}, true);
 	}
@@ -98,6 +105,15 @@ export class PopoverEditor {
 		this.displayInputEl.placeholder = state.isImage
 			? this.t("popoverPlaceholderImageSize")
 			: this.t("popoverPlaceholderDisplay");
+
+		const copyUrlLabel = state.isImage ? this.t("popoverAriaCopyFileName") : this.t("popoverAriaCopyUrl");
+		this.copyMarkdownButtonEl.setAttribute("aria-label", state.copyMarkdownLabel);
+		this.copyMarkdownButtonEl.setAttribute("title", state.copyMarkdownLabel);
+
+		this.copyUrlButtonEl.setAttribute("aria-label", state.copyUrlLabel || copyUrlLabel);
+		this.copyUrlButtonEl.setAttribute("title", state.copyUrlLabel || copyUrlLabel);
+		setIcon(this.copyUrlButtonEl, state.copyUrlIcon);
+		this.deleteButtonEl.toggleClass("is-hidden", !state.showDelete);
 
 		/* Place off-screen first to let Popper compute without flash */
 		this.rootEl.setCssStyles({ visibility: "hidden" });
@@ -143,13 +159,15 @@ export class PopoverEditor {
 		ariaLabel: string,
 		onClick: () => void,
 		danger = false,
-	): void {
+	): HTMLButtonElement {
 		const btn = parent.createEl("button", {
 			cls: `better-links-popover__icon-btn${danger ? " mod-danger" : ""}`,
 			attr: { type: "button", "aria-label": ariaLabel },
 		});
 		setIcon(btn, icon);
 		btn.addEventListener("click", onClick);
+		btn.setAttribute("title", ariaLabel);
+		return btn;
 	}
 
 	private attachGlobalListeners(referenceEl: HTMLElement): void {

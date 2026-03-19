@@ -39,12 +39,21 @@ export async function openLink(app: App, match: EditorLinkMatch, values: Editabl
 	window.open(destination, "_blank", "noopener,noreferrer");
 }
 
-export async function copyMarkdown(match: EditorLinkMatch, values: EditableLinkValues): Promise<void> {
-	const markdown = toMarkdownSnippet(match, values.displayText, values.destination);
-	await copyText(markdown, t("noticeCopiedMarkdown"));
+export async function copyMarkdown(app: App, match: EditorLinkMatch, values: EditableLinkValues): Promise<void> {
+	const destination = values.destination.trim();
+	const snippet = isLikelyExternalDestination(destination)
+		? toMarkdownSnippet(match, values.displayText, destination)
+		: toPreferredInternalSnippet(app, match, values);
+	await copyText(snippet, t("noticeCopiedMarkdown"));
 }
 
-export async function copyUrl(url: string): Promise<void> {
+export async function copyUrl(app: App, match: EditorLinkMatch, url: string): Promise<void> {
+	if (isImageType(match)) {
+		const fileName = extractFileName(url);
+		await copyText(fileName, t("noticeCopiedFileName"));
+		return;
+	}
+
 	await copyText(url.trim(), t("noticeCopiedUrl"));
 }
 
@@ -105,4 +114,66 @@ function getElectronModule(): ElectronModule | null {
 	}
 
 	return loaded as ElectronModule;
+}
+
+function isImageType(match: Pick<EditorLinkMatch, "type">): boolean {
+	return match.type === "imageWiki" || match.type === "imageMarkdown";
+}
+
+function toPreferredInternalSnippet(app: App, match: EditorLinkMatch, values: EditableLinkValues): string {
+	if (isImageType(match)) {
+		return toPreferredImageSnippet(app, values);
+	}
+
+	const destination = values.destination.trim();
+	const displayText = values.displayText.trim();
+	if (shouldUseWikiLinkFormat(app)) {
+		if (displayText.length === 0) {
+			return `[[${destination}]]`;
+		}
+
+		return `[[${destination}|${displayText}]]`;
+	}
+
+	return `[${displayText}](${destination})`;
+}
+
+function toPreferredImageSnippet(app: App, values: EditableLinkValues): string {
+	const destination = values.destination.trim();
+	const sizeText = values.displayText.trim();
+
+	if (shouldUseWikiLinkFormat(app)) {
+		return sizeText.length > 0 ? `![[${destination}|${sizeText}]]` : `![[${destination}]]`;
+	}
+
+	return `![${sizeText}](${destination})`;
+}
+
+export function shouldUseWikiLinkFormat(app: App): boolean {
+	const vaultWithConfig = app.vault as typeof app.vault & {
+		getConfig?: (key: string) => unknown;
+	};
+
+	const useMarkdownLinks = vaultWithConfig.getConfig?.("useMarkdownLinks");
+	if (typeof useMarkdownLinks === "boolean") {
+		return !useMarkdownLinks;
+	}
+
+	const useWikiLinks = vaultWithConfig.getConfig?.("useWikiLinks");
+	if (typeof useWikiLinks === "boolean") {
+		return useWikiLinks;
+	}
+
+	return false;
+}
+
+function extractFileName(destination: string): string {
+	const cleaned = destination.trim().split(/[?#]/, 1)[0] ?? destination.trim();
+	if (!cleaned) {
+		return "";
+	}
+
+	const normalized = cleaned.replace(/\\/g, "/");
+	const parts = normalized.split("/");
+	return parts[parts.length - 1] ?? cleaned;
 }

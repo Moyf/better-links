@@ -49,11 +49,17 @@ export function serializeEditedLink(match: EditorLinkMatch, displayText: string,
 			return "";
 		}
 
-		return nextDisplayText.length > 0 ? `![[${nextDestination}|${nextDisplayText}]]` : `![[${nextDestination}]]`;
+		const useEmbedSyntax = match.originalText.startsWith("![[");
+		const prefix = useEmbedSyntax ? "!" : "";
+		return nextDisplayText.length > 0
+			? `${prefix}[[${nextDestination}|${nextDisplayText}]]`
+			: `${prefix}[[${nextDestination}]]`;
 	}
 
 	if (match.type === "imageMarkdown") {
-		return `![${nextDisplayText}](${nextDestination})`;
+		const useEmbedSyntax = match.originalText.startsWith("![");
+		const prefix = useEmbedSyntax ? "!" : "";
+		return `${prefix}[${nextDisplayText}](${nextDestination})`;
 	}
 
 	if (match.type === "wiki") {
@@ -80,7 +86,11 @@ export function toMarkdownSnippet(match: EditorLinkMatch, displayText: string, d
 	const nextDisplayText = (displayText.trim() || defaultDisplayText(match)).trim();
 	const nextDestination = destination.trim();
 	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
-		return `![${nextDisplayText}](${nextDestination})`;
+		const useEmbedSyntax =
+			(match.type === "imageWiki" && match.originalText.startsWith("![[")) ||
+			(match.type === "imageMarkdown" && match.originalText.startsWith("!["));
+		const prefix = useEmbedSyntax ? "!" : "";
+		return `${prefix}[${nextDisplayText}](${nextDestination})`;
 	}
 
 	return `[${nextDisplayText}](${nextDestination})`;
@@ -138,14 +148,16 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 		for (const match of lineText.matchAll(WIKILINK_PATTERN)) {
 			const start = match.index ?? 0;
 			const originalText = match[0];
-			const isImage = originalText.startsWith("![[");
+			const isImageEmbed = originalText.startsWith("![[");
+			const inside = match[1] ?? "";
+			const separatorIndex = inside.indexOf("|");
+			const destination = separatorIndex >= 0 ? inside.slice(0, separatorIndex).trim() : inside.trim();
+			const isImageDestination = isImageDestinationPath(destination);
+			const isImage = isImageEmbed || isImageDestination;
 			if (isImage && !settings.enableImages) {
 				continue;
 			}
 
-			const inside = match[1] ?? "";
-			const separatorIndex = inside.indexOf("|");
-			const destination = separatorIndex >= 0 ? inside.slice(0, separatorIndex).trim() : inside.trim();
 			const displayText = isImage
 				? (separatorIndex >= 0 ? inside.slice(separatorIndex + 1).trim() : "")
 				: (separatorIndex >= 0 ? inside.slice(separatorIndex + 1).trim() : prettifyWikiTarget(destination));
@@ -166,7 +178,10 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 		for (const match of lineText.matchAll(MARKDOWN_LINK_PATTERN)) {
 			const start = match.index ?? 0;
 			const originalText = match[0];
-			const isImage = originalText.startsWith("![");
+			const isImageEmbed = originalText.startsWith("![");
+			const destination = (match[2] ?? "").trim();
+			const isImageDestination = isImageDestinationPath(destination);
+			const isImage = isImageEmbed || isImageDestination;
 			if (isImage && !settings.enableImages) {
 				continue;
 			}
@@ -177,7 +192,7 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 				end: start + originalText.length,
 				originalText,
 				displayText: match[1] ?? "",
-				destination: (match[2] ?? "").trim(),
+				destination,
 				hasExplicitDisplayText: true,
 			});
 		}
@@ -214,4 +229,9 @@ function prettifyWikiTarget(destination: string): string {
 
 function rangesOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
 	return startA < endB && startB < endA;
+}
+
+function isImageDestinationPath(destination: string): boolean {
+	const cleaned = destination.split(/[?#]/, 1)[0] ?? destination;
+	return /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i.test(cleaned.trim());
 }

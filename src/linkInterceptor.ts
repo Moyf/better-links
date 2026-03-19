@@ -11,10 +11,6 @@ export class LinkInterceptor {
 		private readonly linkEditManager: LinkEditManager,
 	) {}
 
-	handlePointerDown(event: PointerEvent): Promise<void> {
-		return this.handleEvent(event);
-	}
-
 	handleClick(event: MouseEvent): Promise<void> {
 		return this.handleEvent(event);
 	}
@@ -26,6 +22,10 @@ export class LinkInterceptor {
 
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) {
+			return;
+		}
+
+		if (target.matches("img") || target.closest("img") || target.closest(".image-embed")) {
 			return;
 		}
 

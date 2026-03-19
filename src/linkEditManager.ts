@@ -1,7 +1,7 @@
 import { MarkdownView, Notice } from "obsidian";
 import type BetterLinksPlugin from "./main";
-import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink } from "./linkActions";
-import { serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
+import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink, shouldUseWikiLinkFormat } from "./linkActions";
+import { isLikelyExternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
 import { PopoverEditor } from "./popoverEditor";
 
 interface ActiveSession {
@@ -25,7 +25,12 @@ export class LinkEditManager {
 				void this.copyMarkdown(displayText, destination);
 			},
 			onCopyUrl: (destination) => {
-				void copyUrl(destination);
+				const session = this.activeSession;
+				if (!session) {
+					return;
+				}
+
+				void copyUrl(this.plugin.app, session.match, destination);
 			},
 			onDelete: () => {
 				this.deleteCurrentLink();
@@ -42,11 +47,16 @@ export class LinkEditManager {
 
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
 		this.activeSession = { match, referenceEl };
+		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		this.popoverEditor.open(referenceEl, {
 			displayText: match.displayText,
 			destination: match.destination,
 			typeLabel: linkTypeLabel(match.type, this.plugin),
-			isImage: match.type === "imageWiki" || match.type === "imageMarkdown",
+			isImage,
+			copyMarkdownLabel: copyMarkdownLabel(match, this.plugin),
+			copyUrlLabel: copyUrlLabel(match, this.plugin),
+			copyUrlIcon: copyUrlIcon(match),
+			showDelete: !isImage,
 		});
 	}
 
@@ -103,7 +113,7 @@ export class LinkEditManager {
 		}
 
 		const values = normalizeEditableValues(session.match, displayText, destination);
-		await copyMarkdown(session.match, values);
+		await copyMarkdown(this.plugin.app, session.match, values);
 	}
 
 	private deleteCurrentLink(): void {
@@ -153,4 +163,30 @@ function linkTypeLabel(type: EditorLinkMatch["type"], plugin: BetterLinksPlugin)
 	}
 
 	return plugin.t("typeLabelUrl");
+}
+
+function copyMarkdownLabel(match: EditorLinkMatch, plugin: BetterLinksPlugin): string {
+	if (isLikelyExternalDestination(match.destination)) {
+		return plugin.t("popoverAriaCopyMarkdown");
+	}
+
+	return shouldUseWikiLinkFormat(plugin.app)
+		? plugin.t("popoverAriaCopyWikiLink")
+		: plugin.t("popoverAriaCopyMarkdown");
+}
+
+function copyUrlLabel(match: EditorLinkMatch, plugin: BetterLinksPlugin): string {
+	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
+		return plugin.t("popoverAriaCopyFileName");
+	}
+
+	return plugin.t("popoverAriaCopyUrl");
+}
+
+function copyUrlIcon(match: EditorLinkMatch): string {
+	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
+		return "file";
+	}
+
+	return isLikelyExternalDestination(match.destination) ? "link" : "file";
 }
