@@ -19,6 +19,14 @@ File: `.github/workflows/package.yml`
 
 ### Key rules learned from this project
 
+0. **Maintain a bilingual changelog and let release read from it**:
+  - Keep version headers in this format so workflow extraction works: `## [x.y.z] - YYYY-MM-DD`
+  - Under each version, always write full English section first, then full Chinese section. Do not interleave line-by-line.
+  - Recommended structure:
+    - `### English` + `#### Added/Changed/Fixed`
+    - `### 中文` + `#### 新增/变更/修复`
+  - Current workflow extracts the tagged version section from `CHANGELOG.md` into `release/release-notes.md` and appends GitHub-generated notes.
+
 1. **Do not specify `version:` in `pnpm/action-setup`** — it conflicts with `packageManager` in `package.json`. Let the `packageManager` field alone control the pnpm version:
    ```yaml
    - uses: pnpm/action-setup@v4

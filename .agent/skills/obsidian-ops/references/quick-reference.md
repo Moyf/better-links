@@ -108,6 +108,9 @@ See Obsidian's CSS variables documentation for complete variable list.
 - Run release readiness check: See [release-readiness.md](release-readiness.md)
 - Verify all checklist items (platform testing, files, policies, etc.)
 - Ensure LICENSE file exists and third-party code is properly attributed
+- Update `CHANGELOG.md` for the target version under `## [x.y.z] - YYYY-MM-DD` using this fixed order:
+  - `### English` first (full English notes)
+  - `### 中文` second (full Chinese notes)
 
 See [versioning-releases.md](versioning-releases.md) for release process.
 
