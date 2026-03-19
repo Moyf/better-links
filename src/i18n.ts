@@ -38,7 +38,7 @@ const ZH_CN = {
 	popoverPlaceholderImageSize: "图片尺寸，例如 100x80",
 	popoverPlaceholderDestination: "URL 或笔记路径",
 	popoverAriaOpen: "打开链接",
-	popoverHintCtrlClick: "Ctrl+Click 直接打开",
+	popoverHintCtrlClick: "Ctrl+Click",
 	popoverAriaCopyMarkdown: "复制为 Markdown",
 	popoverAriaCopyWikiLink: "复制为 Wikilink",
 	popoverAriaCopyUrl: "复制 URL",
