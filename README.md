@@ -35,7 +35,7 @@ Click a link to open a small popover where you can edit text/target and run quic
 
 ## 中文
 
-![preview](assets/preview.jpg)
+![preview](assets/preview-zh.jpg)
 
 Better Links 是一个 Obsidian 插件，用于在 Markdown 编辑器中快速编辑链接。
 点击链接会弹出轻量浮窗，可直接修改文本和目标，并执行快捷操作。
