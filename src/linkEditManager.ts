@@ -46,6 +46,7 @@ export class LinkEditManager {
 			displayText: match.displayText,
 			destination: match.destination,
 			typeLabel: linkTypeLabel(match.type, this.plugin),
+			isImage: match.type === "imageWiki" || match.type === "imageMarkdown",
 		});
 	}
 
@@ -141,6 +142,14 @@ function linkTypeLabel(type: EditorLinkMatch["type"], plugin: BetterLinksPlugin)
 
 	if (type === "markdown") {
 		return plugin.t("typeLabelMarkdown");
+	}
+
+	if (type === "imageWiki") {
+		return plugin.t("typeLabelImageWiki");
+	}
+
+	if (type === "imageMarkdown") {
+		return plugin.t("typeLabelImageMarkdown");
 	}
 
 	return plugin.t("typeLabelUrl");

@@ -71,6 +71,18 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 				});
 		});
 
+		linkTypeGroup.addSetting((setting) => {
+			setting
+				.setName(t("settingsImageName"))
+				.setDesc(t("settingsImageDesc"))
+				.addToggle((toggle) => {
+					toggle.setValue(this.plugin.settings.enableImages).onChange(async (value) => {
+						this.plugin.settings.enableImages = value;
+						await this.plugin.saveSettings();
+					});
+				});
+		});
+
 		const actionGroup = new SettingGroup(containerEl)
 				.setHeading(t("settingsActions"))
 			.addClass("better-links-settings-group");

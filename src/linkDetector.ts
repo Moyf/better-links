@@ -1,7 +1,7 @@
 import type { EditorPosition } from "obsidian";
 import type { BetterLinksSettings } from "./settings";
 
-export type LinkKind = "wiki" | "markdown" | "url";
+export type LinkKind = "wiki" | "markdown" | "url" | "imageWiki" | "imageMarkdown";
 
 export interface RelativeLinkMatch {
 	type: LinkKind;
@@ -21,8 +21,8 @@ export interface EditorLinkMatch extends RelativeLinkMatch {
 	sourcePath: string;
 }
 
-const WIKILINK_PATTERN = /\[\[([^\]\r\n]+?)\]\]/g;
-const MARKDOWN_LINK_PATTERN = /\[([^\]\r\n]*)\]\(([^)\r\n]+)\)/g;
+const WIKILINK_PATTERN = /!?\[\[([^\]\r\n]+?)\]\]/g;
+const MARKDOWN_LINK_PATTERN = /!?\[([^\]\r\n]*)\]\(([^)\r\n]+)\)/g;
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"]+[^\s<>"),.;:!?]/g;
 
 export function findLinkAtOffset(lineText: string, offset: number, settings: BetterLinksSettings): RelativeLinkMatch | null {
@@ -44,6 +44,17 @@ export function withEditorRange(match: RelativeLinkMatch, line: number, sourcePa
 export function serializeEditedLink(match: EditorLinkMatch, displayText: string, destination: string): string {
 	const nextDisplayText = displayText.trim();
 	const nextDestination = destination.trim();
+	if (match.type === "imageWiki") {
+		if (!nextDestination) {
+			return "";
+		}
+
+		return nextDisplayText.length > 0 ? `![[${nextDestination}|${nextDisplayText}]]` : `![[${nextDestination}]]`;
+	}
+
+	if (match.type === "imageMarkdown") {
+		return `![${nextDisplayText}](${nextDestination})`;
+	}
 
 	if (match.type === "wiki") {
 		if (!nextDestination) {
@@ -68,6 +79,10 @@ export function serializeEditedLink(match: EditorLinkMatch, displayText: string,
 export function toMarkdownSnippet(match: EditorLinkMatch, displayText: string, destination: string): string {
 	const nextDisplayText = (displayText.trim() || defaultDisplayText(match)).trim();
 	const nextDestination = destination.trim();
+	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
+		return `![${nextDisplayText}](${nextDestination})`;
+	}
+
 	return `[${nextDisplayText}](${nextDestination})`;
 }
 
@@ -80,6 +95,10 @@ export function deletionReplacement(match: EditorLinkMatch, preserveText: boolea
 }
 
 export function defaultDisplayText(match: Pick<EditorLinkMatch, "type" | "displayText" | "destination" | "hasExplicitDisplayText">): string {
+	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
+		return match.displayText;
+	}
+
 	if (match.type === "wiki") {
 		if (match.hasExplicitDisplayText && match.displayText.trim().length > 0) {
 			return match.displayText;
@@ -119,13 +138,20 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 		for (const match of lineText.matchAll(WIKILINK_PATTERN)) {
 			const start = match.index ?? 0;
 			const originalText = match[0];
+			const isImage = originalText.startsWith("![[");
+			if (isImage && !settings.enableImages) {
+				continue;
+			}
+
 			const inside = match[1] ?? "";
 			const separatorIndex = inside.indexOf("|");
 			const destination = separatorIndex >= 0 ? inside.slice(0, separatorIndex).trim() : inside.trim();
-			const displayText = separatorIndex >= 0 ? inside.slice(separatorIndex + 1).trim() : prettifyWikiTarget(destination);
+			const displayText = isImage
+				? (separatorIndex >= 0 ? inside.slice(separatorIndex + 1).trim() : "")
+				: (separatorIndex >= 0 ? inside.slice(separatorIndex + 1).trim() : prettifyWikiTarget(destination));
 
 			matches.push({
-				type: "wiki",
+				type: isImage ? "imageWiki" : "wiki",
 				start,
 				end: start + originalText.length,
 				originalText,
@@ -139,13 +165,14 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 	if (settings.enableMarkdownLinks) {
 		for (const match of lineText.matchAll(MARKDOWN_LINK_PATTERN)) {
 			const start = match.index ?? 0;
-			if (start > 0 && lineText[start - 1] === "!") {
+			const originalText = match[0];
+			const isImage = originalText.startsWith("![");
+			if (isImage && !settings.enableImages) {
 				continue;
 			}
 
-			const originalText = match[0];
 			matches.push({
-				type: "markdown",
+				type: isImage ? "imageMarkdown" : "markdown",
 				start,
 				end: start + originalText.length,
 				originalText,

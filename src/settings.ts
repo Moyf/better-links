@@ -6,6 +6,7 @@ export interface BetterLinksSettings {
 	enableWikiLinks: boolean;
 	enableMarkdownLinks: boolean;
 	enablePlainUrls: boolean;
+	enableImages: boolean;
 	externalLinkOpenMode: ExternalLinkOpenMode;
 	deleteLinkBehavior: DeleteLinkBehavior;
 }
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
 	enableWikiLinks: true,
 	enableMarkdownLinks: true,
 	enablePlainUrls: true,
+	enableImages: true,
 	externalLinkOpenMode: "browser",
 	deleteLinkBehavior: "preserve-text",
 };

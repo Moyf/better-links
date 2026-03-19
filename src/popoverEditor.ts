@@ -6,6 +6,7 @@ export interface PopoverEditorState {
 	displayText: string;
 	destination: string;
 	typeLabel: string;
+	isImage: boolean;
 }
 
 export interface PopoverEditorEvents {
@@ -89,6 +90,9 @@ export class PopoverEditor {
 		this.typeBadgeEl.setText(state.typeLabel);
 		this.displayInputEl.value = state.displayText;
 		this.destinationInputEl.value = state.destination;
+		this.displayInputEl.placeholder = state.isImage
+			? this.t("popoverPlaceholderImageSize")
+			: this.t("popoverPlaceholderDisplay");
 
 		/* Place off-screen first to let Popper compute without flash */
 		this.rootEl.setCssStyles({ visibility: "hidden" });
