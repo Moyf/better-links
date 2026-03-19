@@ -62,6 +62,11 @@ export class PopoverEditor {
 			this.events.onOpen(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
+		leftEl.createSpan({
+			cls: "better-links-popover__open-hint",
+			text: this.t("popoverHintCtrlClick"),
+		});
+
 		this.createIconButton(rightEl, "copy", this.t("popoverAriaCopyMarkdown"), () => {
 			this.events.onCopyMarkdown(this.displayInputEl.value, this.destinationInputEl.value);
 		});

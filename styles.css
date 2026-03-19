@@ -60,7 +60,15 @@
 .better-links-popover__footer-left,
 .better-links-popover__footer-right {
 	display: flex;
+	align-items: center;
 	gap: 2px;
+}
+
+.better-links-popover__open-hint {
+	margin-left: 4px;
+	color: var(--text-muted);
+	font-size: var(--font-smallest);
+	white-space: nowrap;
 }
 
 .better-links-popover__icon-btn {
