@@ -3,6 +3,54 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.0.5] - 2026-03-19
+
+### English
+
+#### Added
+
+- **Link suggestion dropdown**: When editing a wiki/markdown link destination, an autocomplete dropdown appears showing matching notes and headings from the vault.
+  - File mode (default): fuzzy-search all vault files; non-Markdown files are shown in a dimmed style with their file extension.
+  - Heading mode: type `#` after a filename to list and search headings within that file.
+  - Supports all file formats, not just Markdown.
+  - Respects Obsidian's internal link format setting (shortest path / absolute / relative).
+- **Alias sync on selection** (optional, off by default): when selecting a heading from the suggestion list, automatically fill in the display text (alias).
+  - Format options: heading only / filename › heading / heading › filename.
+  - Customizable separator (default ` > `).
+  - Customizable frontmatter property used as the display name (default `title`, falls back to filename).
+- Link suggestions have their own settings group with all sub-options hidden when the feature is disabled.
+- **Embed toggle button**: a dedicated button in the popover footer to toggle the `!` embed prefix on wiki/markdown links.
+- **Ctrl+Click to force-delete**: Ctrl/Cmd+clicking the delete button removes the link completely regardless of the "preserve text" setting.
+- Plugin now shows an icon in the settings sidebar.
+
+#### Fixed
+
+- Suggestion dropdown no longer reopens after selecting an item.
+- Mouse clicks on the suggestion dropdown no longer close the popover editor prematurely.
+
+### 中文
+
+#### 新增
+
+- **链接建议下拉菜单**：在编辑 WikiLink / Markdown 链接目标时，自动显示库内文件和标题的模糊搜索候选列表。
+  - 文件模式（默认）：检索所有文件；非 Markdown 文件以减弱颜色和后缀名显示。
+  - 标题模式：在文件名后输入 `#`，列出并检索该文件的所有标题。
+  - 支持所有文件格式，不限 Markdown。
+  - 遵循 Obsidian 的内部链接类型设置（最短路径 / 绝对路径 / 相对路径）。
+- **选中时同步别名**（可选，默认关闭）：从候选列表选中标题时，自动填入显示文本。
+  - 格式选项：仅标题 / 文件名 › 标题 / 标题 › 文件名。
+  - 可自定义连接符（默认 ` > `）。
+  - 可自定义用于展示文件名的 frontmatter 属性（默认 `title`，未找到时 fallback 到文件名）。
+- 链接建议相关设置独立为一个分组，关闭主开关后子选项自动隐藏。
+- **嵌入切换按钮**：弹窗底部新增按钮，可快速切换链接前的 `!` embed 前缀。
+- **Ctrl+Click 强制删除**：按住 Ctrl/Cmd 点击删除按钮时，无论「保留文本」设置如何，都会完整移除链接。
+- 插件在设置侧边栏中现在有图标。
+
+#### 修复
+
+- 修复：选中候选项后下拉菜单会重新弹出的问题。
+- 修复：在候选菜单上点击鼠标时会意外关闭弹窗编辑器的问题。
+
 ## [1.0.4] - 2026-03-19
 
 ### English
