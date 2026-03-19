@@ -17,7 +17,9 @@ export interface EditableLinkValues {
 	destination: string;
 }
 
-const t = createTranslator(navigator.language || "en-US");
+const t = createTranslator(
+	window.localStorage.getItem("language") ?? "en"
+);
 export async function openLink(app: App, match: EditorLinkMatch, values: EditableLinkValues, settings: BetterLinksSettings): Promise<void> {
 	const destination = values.destination.trim();
 	if (!destination) {

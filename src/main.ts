@@ -7,7 +7,9 @@ import { BetterLinksSettings, DEFAULT_SETTINGS } from "./settings";
 
 export default class BetterLinksPlugin extends Plugin {
 	settings: BetterLinksSettings;
-	private readonly translate = createTranslator(navigator.language || "en-US");
+	private readonly translate = createTranslator(
+		window.localStorage.getItem("language") ?? "en"
+	);
 	private linkEditManager: LinkEditManager;
 	private linkInterceptor: LinkInterceptor;
 

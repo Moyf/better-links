@@ -33,3 +33,4 @@ Load this skill when:
 - `references/coding-conventions.md`: Code style and organization
 - `references/commands-settings.md`: Command and settings patterns
 - `references/common-tasks.md`: Frequently needed operations
+- `references/localization.md`: i18n patterns and how to get Obsidian's UI language
