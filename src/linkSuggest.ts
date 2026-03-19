@@ -30,6 +30,8 @@ export interface LinkSuggestCallbacks {
 
 export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion> {
 	private _active = false;
+	/** 选中时临时屏蔽 input 事件触发 suggest，防止选中后下拉重开 */
+	private _suppressNext = false;
 
 	constructor(
 		app: App,
@@ -57,6 +59,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	}
 
 	getSuggestions(query: string): LinkSuggestion[] {
+		if (this._suppressNext) return [];
 		const hashIndex = query.indexOf("#");
 		if (hashIndex >= 0) {
 			return this.getHeadingSuggestions(query, hashIndex);
@@ -93,10 +96,14 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 			this.callbacks.setDisplayText(alias);
 		}
 
-		// ── 3. 触发 input 事件让 debounce 校验流程感知到变化──────────────────
-		this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-		this.callbacks.onSuggestionSelected();
+		// ── 3. 先关闭下拉，再 dispatch input 事件──────────────────────────────
+		// 用 _suppressNext 屏蔽本次 input 触发的 getSuggestions，防止下拉重开。
+		this._suppressNext = true;
 		this.close();
+		this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+		// dispatch 完成后解除屏蔽（微任务队列里恢复，不影响正常后续输入）
+		Promise.resolve().then(() => { this._suppressNext = false; });
+		this.callbacks.onSuggestionSelected();
 	}
 
 	// ── private: rendering ───────────────────────────────────────────────────
