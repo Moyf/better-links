@@ -13,6 +13,8 @@ export interface BetterLinksSettings {
     edgeProtection?: boolean;
     /** 是否在编辑内部链接时校验目标文件/标题是否存在 */
     validateInternalLinks?: boolean;
+    /** 是否在编辑内部链接目标时显示笔记和标题的自动补全建议 */
+    enableLinkSuggestions?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -25,4 +27,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
 	deleteLinkBehavior: "preserve-text",
     edgeProtection: true,
     validateInternalLinks: true,
+    enableLinkSuggestions: true,
 };
