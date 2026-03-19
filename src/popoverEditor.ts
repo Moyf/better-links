@@ -201,6 +201,8 @@ export class PopoverEditor {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
 			if (this.rootEl.contains(target) || referenceEl.contains(target)) return;
+			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
+			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
 			this.events.onClose();
 		};
 
