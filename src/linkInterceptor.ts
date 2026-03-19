@@ -70,21 +70,32 @@ export class LinkInterceptor {
 		const editorMatch = withEditorRange(match, position.line, markdownView.file.path);
 
 		// 验证鼠标坐标是否真的在链接范围内
-		const matchStart = editorView.coordsAtPos(editorView.state.doc.line(position.line + 1).from + match.start);
-		const matchEnd = editorView.coordsAtPos(editorView.state.doc.line(position.line + 1).from + match.end);
+		const lineStartOffset = editorView.state.doc.line(position.line + 1).from;
+		const matchStartOffset = lineStartOffset + match.start;
+		const matchStart = editorView.coordsAtPos(matchStartOffset);
+		const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
 		
 		if (!matchStart || !matchEnd) {
 			return;
 		}
 
-		// 检查鼠标Y坐标是否在链接高度范围内
-		if (event.clientY < matchStart.top || event.clientY > matchStart.bottom) {
-			return;
-		}
 
-		// 严格检查：鼠标X坐标必须在链接的左右边界之间
-		if (event.clientX > matchEnd.right) {
-			return;
+		// 边界保护：受设置控制
+		if (this.plugin.settings.edgeProtection ?? true) {
+			// 左侧缓冲区：允许 2-4px 内点击都视为插入，不弹窗
+			const LEFT_BUFFER = 4; // px
+			if (Math.abs(documentOffset - matchStartOffset) <= LEFT_BUFFER && event.clientX <= matchStart.left + LEFT_BUFFER) {
+				return;
+			}
+            
+			// 检查鼠标Y坐标是否在链接高度范围内
+			if (event.clientY < matchStart.top || event.clientY > matchStart.bottom) {
+				return;
+			}
+			// 严格检查：鼠标X坐标必须在链接的左右边界之间
+			if (event.clientX > matchEnd.right) {
+				return;
+			}
 		}
 
 		event.preventDefault();

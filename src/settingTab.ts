@@ -31,6 +31,18 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 				});
 		});
 
+        behaviorGroup.addSetting((setting) => {
+            setting
+                .setName(t("settingsEdgeProtectionName"))
+                .setDesc(t("settingsEdgeProtectionDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.edgeProtection ?? true).onChange(async (value) => {
+                        this.plugin.settings.edgeProtection = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
 		const linkTypeGroup = new SettingGroup(containerEl)
 				.setHeading(t("settingsSupportedTypes"))
 			.addClass("better-links-settings-group");

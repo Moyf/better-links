@@ -9,6 +9,8 @@ export interface BetterLinksSettings {
 	enableImages: boolean;
 	externalLinkOpenMode: ExternalLinkOpenMode;
 	deleteLinkBehavior: DeleteLinkBehavior;
+    /** 是否启用链接边界保护，防止点击最前/最后弹窗，便于插入或追加文本 */
+    edgeProtection?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -19,4 +21,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
 	enableImages: true,
 	externalLinkOpenMode: "browser",
 	deleteLinkBehavior: "preserve-text",
+    edgeProtection: true,
 };

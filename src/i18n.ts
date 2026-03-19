@@ -1,6 +1,8 @@
 export type I18nKey = keyof typeof ZH_CN;
 
 const ZH_CN = {
+		settingsEdgeProtectionName: "启用边界保护",
+		settingsEdgeProtectionDesc: "防止在链接最前/最后点击时弹窗，便于插入或追加文本。",
 	commandCloseLinkEditor: "关闭链接编辑器",
 	noticeLinkUpdated: "链接已更新。",
 	noticeLinkRemoved: "链接已删除。",
@@ -52,6 +54,8 @@ const ZH_CN = {
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
+		settingsEdgeProtectionName: "Enable boundary protection",
+		settingsEdgeProtectionDesc: "Prevent popup when clicking at the very start or end of a link, so you can insert or append text easily.",
 	commandCloseLinkEditor: "Close link editor",
 	noticeLinkUpdated: "Link updated.",
 	noticeLinkRemoved: "Link removed.",
