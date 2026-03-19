@@ -1,241 +1,159 @@
-# Obsidian Sample Plugin Plus
+# Better Links
 
-This is a sample plugin for [Obsidian](https://obsidian.md) with AI-assisted development tools and best practices.
+Better Links 是一个 Obsidian 插件，用来把 Markdown 编辑器里的链接点击动作改造成“先编辑，再操作”的浮动气泡交互。
 
-This project uses TypeScript to provide type checking and documentation. The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+点击支持的链接时，插件会在链接旁边打开一个基于 Popper.js 定位的浮动编辑窗，用来快速修改链接名称和目标地址，并提供打开、复制、删除等快捷操作。
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do:
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
+## 当前功能
 
-## What Makes This Plus Version Different?
+- 支持 3 类链接
+   - Wikilink：`[[note]]`、`[[note|alias]]`
+   - Markdown 链接：`[label](target)`
+   - 纯 URL：`https://example.com`
+- 普通点击：打开浮动编辑窗
+- `Ctrl+Click` 或 `Cmd+Click`：直接打开链接，跳过编辑窗
+- 浮动编辑窗内支持
+   - 编辑链接名称
+   - 编辑目标地址
+   - 保存修改
+   - 打开链接
+   - 复制为 Markdown 链接
+   - 复制 URL
+   - 删除链接
+- 设置页支持
+   - 启用或禁用插件
+   - 分别启用或禁用 3 类链接
+   - 配置外部链接打开方式
+   - 配置删除链接时保留文本还是全部移除
 
-This template includes additional tools and documentation to improve your development experience:
+## 交互说明
 
-### AI-Assisted Development System  
-  
-This template uses the OpenSkills system with skills available via npm package.  
-  
-**Setup:**  
-```bash  
-# 1. Install dependencies (includes obsidian-dev-skills)
+### 普通点击
+
+在 Markdown 编辑器里普通点击受支持的链接，会在链接附近弹出编辑窗。
+
+### `Ctrl+Click` / `Cmd+Click`
+
+直接打开链接，不显示编辑窗。
+
+### 浮动编辑窗动作
+
+- `Save`：将当前输入写回 Markdown 源文
+- `Open`：按当前输入值打开链接
+- `Copy as Markdown`：复制为 `[text](url)` 格式
+- `Copy URL`：只复制目标地址
+- `Delete`：按设置删除链接
+
+## 设置项
+
+插件设置页包含以下配置：
+
+- `Enable link editor`
+   - 总开关
+- `Wikilinks`
+   - 是否处理 `[[note]]` 类链接
+- `Markdown links`
+   - 是否处理 `[label](target)` 类链接
+- `Plain web links`
+   - 是否处理裸露的 `https://...` 链接
+- `Open external links in`
+   - `System browser`
+   - `Obsidian window`
+- `Delete link behavior`
+   - `Preserve text`
+   - `Remove everything`
+
+## 目前实现边界
+
+- 当前拦截和编辑逻辑以 CodeMirror Markdown 编辑器为核心。
+- 实际适用场景是源码模式和实时预览编辑场景中的链接。
+- README 中的“支持三种链接类型”已经覆盖当前编辑器内交互。
+- 纯阅读视图里的 DOM 到源文范围映射没有单独实现，因此不把它作为当前版本保证范围。
+
+如果后续要扩展到纯阅读视图，需要额外做预览 DOM 到源文位置的映射层。
+
+## 开发
+
+### 依赖安装
+
+```bash
 pnpm install
-
-# 2. Initialize localized skill set (.agent/skills/)
-pnpm obsidian-dev-skills
-
-# 3. Set up reference materials (symlinks to core Obsidian repos)
-.\scripts\setup-ref-links.bat  # Windows  
-# or  [header-9](#header-9)
-bash scripts/setup-ref-links.sh  # macOS/Linux
 ```
 
-**What's included:**
-- **`AGENTS.md`** - OpenSkills entry point for AI agent guidance
-- **`.agent/skills/` folder** - Symlinks to centralized skills repository
-- **Plugin development skills** - TypeScript, API patterns, lifecycle management
-- **Operations skills** - Build, release, and maintenance workflows
-- **Technical references** - API docs, manifest rules, file formats
-- **Project-specific skills** - Your custom patterns and conventions
+### 开发模式
 
-**Benefits:**
-- Single source of truth for development knowledge
-- Automatic updates when skills are improved
-- Consistent guidance across all your projects
-- Specialized knowledge for plugin vs theme development
-- Helps AI assistants understand your project structure and coding conventions
-- Provides quick reference guides and common task examples
-
-### Reference Materials System (`.ref` folder)
-
-- **Symlinks to Obsidian repositories** - Easy access to API docs, sample code, and examples
-- **Centralized storage** - All projects share the same reference repos (no duplication)
-- **6 core Obsidian projects** - API definitions, documentation, sample plugins, ESLint rules
-- **Project-specific references** - Add your own plugin/theme references as needed
-
-### ESLint 9 with Obsidian Rules
-
-- **Exact parity with Review Bot** - Uses the same `obsidianmd.configs.recommended` configuration
-- **Automatic migration** - Upgrades from ESLint 8 to ESLint 9 automatically
-- **Smart detection** - Handles `main.ts` in root or `src/` folder automatically
-- **Catches common issues** - Command naming, style manipulation, deprecated APIs, and more
-
-**See also:** [obsidian-sample-theme-plus](https://github.com/davidvkimball/obsidian-sample-theme-plus) - The companion theme template with similar enhancements.
-
-## Recommended Tools and Plugins for Plugin Development
-
-These tools can significantly improve your plugin development workflow:
-
-### Hot Reload Plugins
-
-**[Hot Reload](https://github.com/pjeby/hot-reload)** - Automatically reload your plugin when code changes. Dramatically speeds up development by eliminating manual reloads.
-
-**[Hot Reload Mobile](https://github.com/shabegom/obsidian-hot-reload-mobile)** - Mobile-compatible version of Hot Reload for testing on mobile devices.
-
-## Improve Code Quality with ESLint
-
-[ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-
-- This project already has ESLint preconfigured, you can invoke a check by running `pnpm lint`
-- Together with a custom ESLint [plugin](https://github.com/obsidianmd/eslint-plugin-obsidian) for Obsidian specific code guidelines
-
-## Quick Start
-
-### For New Plugins (Using This as a Template)
-
-1. **Use this template** - Click "Use this template" on GitHub or clone this repo
-2. **Install dependencies**: `pnpm install`
-3. **Initialize skills**: `pnpm obsidian-dev-skills`
-4. **Optional: Setup reference materials** (recommended):
-   - **Windows**: `scripts\setup-ref-links.bat`
-   - **macOS/Linux**: `./scripts/setup-ref-links.sh`
-4. **Optional: Setup ESLint** (recommended):
-   ```bash
-   node scripts/setup-eslint.mjs
-   pnpm install
-   pnpm lint
-   ```
-5. **Start developing**: `pnpm dev`
-
-### For Existing Plugins (Upgrading to This System)
-
-You can add these enhancements to your existing plugin:
-
-1. **Copy these folders/files to your plugin**:
-   - `AGENTS.md` → Your plugin root
-   - `.agents/` folder → Your plugin root
-   - `scripts/` folder → Your plugin root
-
-2. **Initialize skills**: 
-   - Run `pnpm obsidian-dev-skills` to seed the `.agent/skills/` folder and automatically generate `AGENTS.md`.
-
-3. **Setup reference materials**:
-   - **Windows**: `scripts\setup-ref-links.bat`
-   - **macOS/Linux**: `./scripts/setup-ref-links.sh`
-   - This creates symlinks to Obsidian reference repos in `.ref/` folder
-
-3. **Setup ESLint** (recommended):
-   ```bash
-   node scripts/setup-eslint.mjs
-   pnpm install
-   pnpm lint
-   ```
-   
-   **What the setup script does automatically:**
-   - Updates `package.json` with ESLint 9 dependencies and lint scripts
-   - Creates/updates `eslint.config.mjs` (ESLint 9 flat config)
-   - Updates `esbuild.config.mjs` (fixes builtinModules import, adds entry point detection, ensures output to root)
-   - Creates `scripts/lint-wrapper.mjs` (adds helpful success messages)
-   - Removes legacy `.eslintrc` files if present
-   
-   **Note:** The script will update your existing `esbuild.config.mjs` and `eslint.config.mjs` files, but it preserves your custom configuration where possible. Review the changes after running the script.
-   
-   **Important:** Don't copy `package.json` from this template - it contains template-specific values. The setup script will update your existing `package.json` with only the necessary ESLint dependencies and scripts.
-
-## First Time Developing Plugins?
-
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)!
-- Make a copy of this repo as a template with the "Use this template" button
-- Clone your repo to a local development folder
-- Install NodeJS (v16+), then run `pnpm install`
-- Run `pnpm dev` to compile your plugin (builds to `main.js` in root)
-- For releases, run `pnpm build` which creates `main.js` in root
-- Reload Obsidian to load the new version of your plugin
-- Enable plugin in settings window
-
-## How to Use
-
-### Basic Development
-
-- Clone this repo
-- Make sure your NodeJS is at least v16 (`node --version`)
-- `pnpm install` to install dependencies (or `npm install` - it will automatically proxy to pnpm)
-- **Development**: `pnpm dev` - Builds to `main.js` in root with watch mode
-- **Production**: `pnpm build` - Builds to `main.js` in root (one-time build)
-
-**Note**: This project uses pnpm, but `npm install`, `npm run build`, `npm run dev`, and `npm run lint` will also work for backwards compatibility. The `npm install` command automatically proxies to `pnpm install` via a preinstall hook.
-
-### Using the AI System
-
-- **Bootstrapping with AI**: Before providing instructions to your AI agent, visit the `prompts/` folder. Copy the `starter-prompt.md`, fill in your project details, and provide it to your agent to perfectly initialize the development environment.
-- **Initialize Skills**: Run `pnpm obsidian-dev-skills` to populate or update the `.agent/skills/` folder with the latest localized knowledge and automatically update `AGENTS.md`.
-- Read `AGENTS.md` for project-specific instructions
-- Use `npx openskills read <skill-name>` to load specialized knowledge
-- Check `.agent/skills/*/references/` for deep technical guides
-
-### Using ESLint
-
-- **Check for issues**: `pnpm lint` (shows helpful success message when passing)
-- **Auto-fix issues**: `pnpm lint:fix`
-
-The lint commands use `scripts/lint-wrapper.mjs` which adds helpful success messages. This file is automatically created/updated when you run `node scripts/setup-eslint.mjs`.
-
-## Releasing New Releases
-
-- Update your `manifest.json` with your new version number and minimum Obsidian version
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"`
-- **Build for production**: Run `pnpm build`
-  - Creates `main.js` in the root directory (compiled from TypeScript)
-- Create new GitHub release using your new version number as the "Tag version" (no `v` prefix)
-- **Upload these files** to the release:
-  - `main.js` (from root)
-  - `manifest.json` (from root)
-  - `styles.css` (from root, if present)
-- Publish the release
-
-> **Tip:** You can simplify the version bump process by running `pnpm version patch`, `pnpm version minor` or `pnpm version major` after updating `minAppVersion` manually in `manifest.json`.
-
-
-## Adding Your Plugin to the Community Plugin List
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)
-- Publish an initial version
-- Make sure you have a `README.md` file in the root of your repo
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin
-
-## Manually Installing the Plugin
-
-- Copy over `main.js`, `manifest.json`, and `styles.css` (if present) from the root directory to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`
-
-## Funding URL
-
-You can include funding URLs in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+pnpm dev
 ```
 
-Or for multiple URLs:
+### 生产构建
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors"
-    }
-}
+```bash
+pnpm build
 ```
 
-## Troubleshooting
+当前构建会把以下文件输出到 `dist/`：
 
-### Upgrade Issues
+- `main.js`
+- `manifest.json`
+- `styles.css`
 
-If you're upgrading an existing plugin and encounter issues:
+### Lint
 
-1. **ESLint errors after setup**: Run `pnpm install` to ensure all dependencies are installed
-2. **Build errors**: Check that `esbuild.config.mjs` was updated correctly (the setup script should handle this automatically)
-3. **Entry point not found**: The setup script adds entry point detection - verify `esbuild.config.mjs` has the detection logic for both `src/main.ts` and `main.ts`
-4. **Package.json conflicts**: Don't copy `package.json` from the template - the setup script updates your existing one with only the necessary additions
+```bash
+pnpm lint
+```
 
-### Common Issues
+## 手动测试清单
 
-- **`.ref` folder is empty**: Run the setup script (`scripts\setup-ref-links.bat` or `.sh`)
-- **Linting fails**: Make sure you ran `pnpm install` after running the ESLint setup script
-- **Build fails**: Check that `esbuild.config.mjs` exists and has the correct entry point detection
+建议至少验证以下场景：
 
-## API Documentation
+### 链接识别
 
-See https://docs.obsidian.md
+- 点击 `[[note]]` 能弹出编辑窗
+- 点击 `[[note|alias]]` 能弹出编辑窗并正确填充名称与目标
+- 点击 `[label](https://example.com)` 能弹出编辑窗
+- 点击 `https://example.com` 能弹出编辑窗
+
+### 打开行为
+
+- 普通点击显示编辑窗
+- `Ctrl+Click` / `Cmd+Click` 直接打开链接
+- Wikilink 使用 Obsidian 内部打开
+- 外部链接按设置打开
+
+### 编辑行为
+
+- 修改名称并保存后，Markdown 源文正确更新
+- 修改目标后保存，Markdown 源文正确更新
+- 纯 URL 在填写不同名称后保存，可转换为 Markdown 链接
+
+### 快捷动作
+
+- `Copy URL` 复制成功
+- `Copy as Markdown` 复制结果正确
+- `Delete` 在“保留文本”模式下只去掉链接语法
+- `Delete` 在“全部移除”模式下清空整段链接
+
+### 浮窗定位
+
+- 链接靠近右侧边缘时，浮窗自动翻转或偏移，不被裁切
+- 链接靠近底部边缘时，浮窗自动调整位置
+- 多次点击不同链接时，浮窗位置会跟随更新
+
+## 构建状态
+
+当前仓库已验证：
+
+- `pnpm build` 通过
+- `pnpm lint` 通过
+
+## 发布文件
+
+发布 Obsidian 插件时，需要附带：
+
+- `dist/main.js`
+- `manifest.json`
+- `styles.css`
+
+如果你的发布流程希望最终产物位于仓库根目录，可以再加一层发布脚本拷贝；当前项目默认以 `dist/` 作为构建输出目录。

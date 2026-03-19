@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "better-links",
+	"name": "Better Links",
 	"version": "0.0.1",
 	"minAppVersion": "1.11.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"description": "Enhanced link editing for Obsidian with floating editor popover. Click links to edit their display text and URL with quick action buttons.",
+	"author": "Moyf",
+	"authorUrl": "https://github.com/Moyf",
 	"isDesktopOnly": false
 }

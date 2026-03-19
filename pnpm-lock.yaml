@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@codemirror/view':
+        specifier: ^6.38.6
+        version: 6.38.6
+      '@popperjs/core':
+        specifier: ^2.11.8
+        version: 2.11.8
       obsidian:
         specifier: latest
         version: 1.11.0(@codemirror/state@6.5.0)(@codemirror/view@6.38.6)
@@ -299,6 +305,9 @@ packages:
   '@pkgr/core@0.1.2':
     resolution: {integrity: sha512-fdDH1LSGfZdTH2sxdpVMw31BanV28K/Gry0cVFxaNP77neJSkd82mM8ErPNYs9e+0O7SdHBLTDzDgwUuy18RnQ==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
+
+  '@popperjs/core@2.11.8':
+    resolution: {integrity: sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==}
 
   '@rtsao/scc@1.1.0':
     resolution: {integrity: sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==}
@@ -1626,6 +1635,8 @@ snapshots:
       fastq: 1.20.1
 
   '@pkgr/core@0.1.2': {}
+
+  '@popperjs/core@2.11.8': {}
 
   '@rtsao/scc@1.1.0': {}
 

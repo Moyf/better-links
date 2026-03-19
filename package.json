@@ -1,13 +1,15 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-better-links",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
-	"main": "main.js",
+	"description": "Better Links - Enhanced link editing for Obsidian with floating editor popover",
+	"main": "dist/main.js",
 	"type": "module",
 	"scripts": {
 		"preinstall": "node scripts/npm-proxy.mjs",
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs build",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build:local": "npm run build && npm run copy-to-local",
+		"copy-to-local": "node scripts/copy-to-local.mjs",
 		"lint": "node scripts/lint-wrapper.mjs",
 		"lint:fix": "node scripts/lint-wrapper.mjs --fix",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
@@ -32,6 +34,8 @@
 		"typescript-eslint": "8.35.1"
 	},
 	"dependencies": {
+		"@codemirror/view": "^6.38.6",
+		"@popperjs/core": "^2.11.8",
 		"obsidian": "latest"
 	},
 	"packageManager": "pnpm@10.20.0"

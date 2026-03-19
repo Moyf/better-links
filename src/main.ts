@@ -1,99 +1,79 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { MarkdownView, Plugin } from "obsidian";
+import { LinkEditManager } from "./linkEditManager";
+import { LinkInterceptor } from "./linkInterceptor";
+import { BetterLinksSettingTab } from "./settingTab";
+import { BetterLinksSettings, DEFAULT_SETTINGS } from "./settings";
 
-// Remember to rename these classes and interfaces!
+export default class BetterLinksPlugin extends Plugin {
+	settings: BetterLinksSettings;
+	private linkEditManager: LinkEditManager;
+	private linkInterceptor: LinkInterceptor;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
-
-	async onload() {
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+		this.linkEditManager = new LinkEditManager(this);
+		this.linkInterceptor = new LinkInterceptor(this, this.linkEditManager);
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+		this.addSettingTab(new BetterLinksSettingTab(this.app, this));
 
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+			id: "close-link-editor",
+			name: "Close link editor",
+			checkCallback: (checking) => {
+				const isOpen = this.linkEditManager.isOpen();
+				if (checking) {
+					return isOpen;
 				}
-				return false;
-			}
+
+				this.linkEditManager.close();
+				return true;
+			},
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.registerDomEvent(
+			document,
+			"pointerdown",
+			(event: PointerEvent) => {
+				void this.linkInterceptor.handlePointerDown(event);
+			},
+			{ capture: true }
+		);
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+		this.registerDomEvent(
+			document,
+			"click",
+			(event: MouseEvent) => {
+				void this.linkInterceptor.handleClick(event);
+			},
+			{ capture: true }
+		);
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.debug('setInterval'), 5 * 60 * 1000));
+		this.registerEvent(
+			this.app.workspace.on("active-leaf-change", () => {
+				this.linkEditManager.close();
+			})
+		);
 
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!activeView) {
+					this.linkEditManager.close();
+				}
+			})
+		);
 	}
 
-	onunload() {
+	onunload(): void {
+		this.linkEditManager?.destroy();
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
+	async loadSettings(): Promise<void> {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, (await this.loadData()) as Partial<BetterLinksSettings>);
 	}
 
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }
