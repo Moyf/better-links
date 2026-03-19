@@ -1,0 +1,65 @@
+name: Package Plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build plugin
+        run: pnpm build
+
+      - name: Create package archive
+        run: |
+          mkdir -p release
+          cp dist/main.js release/main.js
+          cp dist/manifest.json release/manifest.json
+          cp dist/styles.css release/styles.css
+          cd release
+          zip -r ../better-links-${{ github.ref_name }}.zip main.js manifest.json styles.css
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: better-links-package
+          path: better-links-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+      - name: Create GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release/main.js
+            release/manifest.json
+            release/styles.css
+            better-links-${{ github.ref_name }}.zip
