@@ -3,6 +3,7 @@ import type BetterLinksPlugin from "./main";
 import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink, shouldUseWikiLinkFormat } from "./linkActions";
 import { isLikelyExternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
 import { PopoverEditor } from "./popoverEditor";
+import { LinkDestinationSuggest } from "./linkSuggest";
 
 interface ActiveSession {
 	match: EditorLinkMatch;
@@ -16,6 +17,8 @@ export class LinkEditManager {
 	private destinationInvalid = false;
 	/** debounce 定时器 */
 	private validateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	/** 当前激活的链接目标 suggest 实例 */
+	private suggest: LinkDestinationSuggest | null = null;
 
 	constructor(private readonly plugin: BetterLinksPlugin) {
 		this.popoverEditor = new PopoverEditor({
@@ -57,6 +60,7 @@ export class LinkEditManager {
 
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
 		this.cancelPendingValidation();
+		this.destroySuggest();
 		this.destinationInvalid = false;
 		this.activeSession = { match, referenceEl };
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
@@ -70,6 +74,24 @@ export class LinkEditManager {
 			copyUrlIcon: copyUrlIcon(match),
 			showDelete: !isImage,
 		});
+
+		// 只对 wiki / markdown 非图片链接启用 suggest
+		const shouldSuggest =
+			(this.plugin.settings.enableLinkSuggestions ?? true) &&
+			(match.type === "wiki" || match.type === "markdown");
+
+		if (shouldSuggest) {
+			this.suggest = new LinkDestinationSuggest(
+				this.plugin.app,
+				this.popoverEditor.destinationInput,
+				match.sourcePath,
+				() => {
+					this.cancelPendingValidation();
+					this.setWarning(false);
+				},
+			);
+			this.popoverEditor.setSuggestActiveChecker(() => this.suggest?.isActive ?? false);
+		}
 	}
 
 	close(): void {
@@ -78,6 +100,7 @@ export class LinkEditManager {
 
 	destroy(): void {
 		this.cancelPendingValidation();
+		this.destroySuggest();
 		this.activeSession = null;
 		this.popoverEditor.destroy();
 	}
@@ -91,6 +114,7 @@ export class LinkEditManager {
 			this.save(displayText, destination, silent);
 		}
 		this.cancelPendingValidation();
+		this.destroySuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
@@ -99,6 +123,7 @@ export class LinkEditManager {
 	/** 丢弃编辑，直接关闭（ESC 触发）。 */
 	private discardAndClose(): void {
 		this.cancelPendingValidation();
+		this.destroySuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
@@ -190,6 +215,14 @@ export class LinkEditManager {
 			clearTimeout(this.validateDebounceTimer);
 			this.validateDebounceTimer = null;
 		}
+	}
+
+	private destroySuggest(): void {
+		if (this.suggest) {
+			this.suggest.close();
+			this.suggest = null;
+		}
+		this.popoverEditor.setSuggestActiveChecker(null);
 	}
 
 	/** 校验内部链接目标是否存在 */
