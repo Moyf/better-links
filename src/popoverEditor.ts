@@ -7,6 +7,7 @@ export interface PopoverEditorState {
 	destination: string;
 	typeLabel: string;
 	isImage: boolean;
+	isInternal: boolean;
 	copyMarkdownLabel: string;
 	copyUrlLabel: string;
 	copyUrlIcon: string;
@@ -43,6 +44,7 @@ export class PopoverEditor {
 	private readonly embedButtonEl: HTMLButtonElement;
 	private readonly deleteButtonEl: HTMLButtonElement;
 	private readonly ctrlClickHintEl: HTMLElement;
+	private readonly openButtonEl: HTMLButtonElement;
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
@@ -86,7 +88,8 @@ export class PopoverEditor {
 			this.events.onToggleEmbed();
 		});
 
-		this.createIconButton(leftEl, "external-link", this.t("popoverAriaOpen"), () => {
+		/* 外部链接打开按钮 */
+		this.openButtonEl = this.createIconButton(leftEl, "external-link", this.t("popoverAriaOpen"), () => {
 			this.events.onOpen(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
@@ -167,6 +170,9 @@ export class PopoverEditor {
 		this.copyUrlButtonEl.setAttribute("aria-label", state.copyUrlLabel || copyUrlLabel);
 		setIcon(this.copyUrlButtonEl, state.copyUrlIcon);
 		this.deleteButtonEl.toggleClass("is-hidden", !state.showDelete);
+
+		/* Open button icon: internal vs external */
+		setIcon(this.openButtonEl, state.isInternal ? "file-symlink" : "external-link");
 
 		/* Ctrl+Click hint */
 		this.ctrlClickHintEl.toggleClass("is-hidden", !state.showCtrlClickHint);

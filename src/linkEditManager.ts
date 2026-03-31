@@ -1,7 +1,7 @@
 import { MarkdownView, Notice } from "obsidian";
 import type BetterLinksPlugin from "./main";
 import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink, shouldUseWikiLinkFormat } from "./linkActions";
-import { isLikelyExternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
+import { isLikelyExternalDestination, isLikelyInternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
 import { PopoverEditor } from "./popoverEditor";
 import { LinkDestinationSuggest } from "./linkSuggest";
 
@@ -102,11 +102,15 @@ export class LinkEditManager {
 		const displayText = (this.plugin.settings.alwaysShowDisplayText ?? false) || match.hasExplicitDisplayText
 			? match.displayText
 			: "";
+		const isInternal = match.type === "wiki" || match.type === "imageWiki" ||
+			(match.type === "markdown" && isLikelyInternalDestination(match.destination)) ||
+			(match.type === "imageMarkdown" && isLikelyInternalDestination(match.destination));
 		this.popoverEditor.open(referenceEl, {
 			displayText,
 			destination: match.destination,
 			typeLabel: linkTypeLabel(match.type, this.plugin),
 			isImage,
+			isInternal,
 			copyMarkdownLabel: copyMarkdownLabel(match, this.plugin),
 			copyUrlLabel: copyUrlLabel(match, this.plugin),
 			copyUrlIcon: copyUrlIcon(match),
