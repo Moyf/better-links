@@ -7,6 +7,8 @@ import { normalizeEditableValues, openLink } from "./linkActions";
 
 /** 悬浮触发的延迟（ms） */
 const HOVER_DELAY = 300;
+/** 鼠标离开链接/popover 后关闭的延迟（ms） */
+const HOVER_LEAVE_DELAY = 500;
 
 export class LinkInterceptor {
 	/** hover 模式：延迟显示定时器 */
@@ -44,9 +46,17 @@ export class LinkInterceptor {
 	 * hover 模式下鼠标离开 popover 区域时启动关闭计时
 	 */
 	scheduleHoverHide(): void {
+		// 用户正在与 popover 交互（输入框获焦或 suggest 打开）时不关闭
+		if (this.linkEditManager.isUserInteracting()) {
+			return;
+		}
 		this.clearHoverHideTimer();
-		const delay = this.plugin.settings.hoverLeaveDelay ?? 500;
+		const delay = HOVER_LEAVE_DELAY;
 		this.hoverHideTimer = setTimeout(() => {
+			// 关闭前再次检查，防止计时期间用户开始交互
+			if (this.linkEditManager.isUserInteracting()) {
+				return;
+			}
 			this.linkEditManager.close();
 			this.hoveredLinkKey = null;
 		}, delay);

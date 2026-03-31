@@ -3,9 +3,6 @@
 /* 外层透明交互容器：扩展鼠标命中区域，不影响视觉 */
 .better-links-popover-wrapper {
 	z-index: var(--layer-popover);
-	padding-right: 86px;
-	display: flex;
-	align-items: flex-end;
 }
 
 .better-links-popover {

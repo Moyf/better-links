@@ -45,8 +45,8 @@ export class LinkEditManager {
 			onToggleEmbed: () => {
 				this.toggleEmbed();
 			},
-			onClose: () => {
-				this.saveAndClose();
+			onClose: (force) => {
+				this.saveAndClose(force);
 			},
 			onDiscard: () => {
 				this.discardAndClose();
@@ -87,6 +87,11 @@ export class LinkEditManager {
 	/** 获取 popover 根元素用于外部事件绑定 */
 	get popoverRootElement(): HTMLElement {
 		return this.popoverEditor.rootElement;
+	}
+
+	/** 用户是否正在与 popover 交互（输入框获焦或 suggest 下拉打开） */
+	isUserInteracting(): boolean {
+		return this.popoverEditor.hasInputFocus() || this.suggest.isActive;
 	}
 
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
@@ -142,12 +147,12 @@ export class LinkEditManager {
 	}
 
 	/** Auto-save current edits then close the popover. */
-	private saveAndClose(): void {
+	private saveAndClose(force = false): void {
 		if (this.activeSession && this.popoverEditor.isOpen()) {
 			const { displayText, destination } = this.popoverEditor.getValues();
 			// 校验失败时需要明确告知用户，不能静默
 			const silent = !this.destinationInvalid;
-			this.save(displayText, destination, silent);
+			this.save(displayText, destination, silent, force);
 		}
 		this.cancelPendingValidation();
 		this.closeSuggest();
@@ -165,12 +170,12 @@ export class LinkEditManager {
 		this.popoverEditor.close();
 	}
 
-	private save(displayText: string, destination: string, silent = false): void {
+	private save(displayText: string, destination: string, silent = false, force = false): void {
 		const session = this.activeSession;
 		if (!session) return;
 
-		// 如果目标校验失败，阻止保存
-		if (this.destinationInvalid) {
+		// 如果目标校验失败且未强制保存，阻止保存
+		if (this.destinationInvalid && !force) {
 			if (!silent) {
 				new Notice(this.plugin.t("noticeInternalLinkNotFound"));
 			}

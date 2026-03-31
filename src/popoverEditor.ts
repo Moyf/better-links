@@ -24,7 +24,7 @@ export interface PopoverEditorEvents {
 	onCopyUrl: (destination: string) => void;
 	onDelete: (forceRemoveAll: boolean) => void;
 	onToggleEmbed: () => void;
-	onClose: () => void;
+	onClose: (force: boolean) => void;
 	onDiscard: () => void;
 	onDestinationInput?: (destination: string) => void;
 }
@@ -133,6 +133,11 @@ export class PopoverEditor {
 
 	setDestinationWarning(hasWarning: boolean): void {
 		this.destinationInputEl.toggleClass("mod-warning", hasWarning);
+	}
+
+	/** 检查 popover 中是否有输入框获焦 */
+	hasInputFocus(): boolean {
+		return this.rootEl.contains(document.activeElement);
 	}
 
 	updateEmbedState(isEmbedded: boolean): void {
@@ -249,7 +254,7 @@ export class PopoverEditor {
 			if (this.wrapperEl.contains(target) || referenceEl.contains(target)) return;
 			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
 			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
-			this.events.onClose();
+			this.events.onClose(false);
 		};
 
 		this.keydownHandler = (event: KeyboardEvent) => {
@@ -261,7 +266,7 @@ export class PopoverEditor {
 				this.events.onDiscard();
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				this.events.onClose();
+				this.events.onClose(event.ctrlKey || event.metaKey);
 			}
 		};
 
