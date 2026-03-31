@@ -75,10 +75,13 @@ const ZH_CN = {
 	typeLabelImageMarkdown: "Markdown 图片",
 	typeLabelUrl: "URL",
 	settingsTriggerModeName: "触发方式",
-	settingsTriggerModeDesc: "选择打开编辑浮窗的触发方式。选择 Ctrl+Click 或 Shift+Click 时，需按住对应按键点击链接才会弹出编辑窗口。",
+	settingsTriggerModeDesc: "选择打开编辑浮窗的触发方式。选择 Ctrl+Click 或 Shift+Click 时，需按住对应按键点击链接才会弹出编辑窗口。选择「悬浮」时，鼠标停留在链接上即弹出编辑窗口，点击链接保持默认行为。",
 	settingsTriggerModeClick: "点击",
 	settingsTriggerModeCtrlClick: "Ctrl+Click",
 	settingsTriggerModeShiftClick: "Shift+Click",
+	settingsTriggerModeHover: "悬浮",
+	settingsHoverLeaveDelayName: "悬浮关闭延迟",
+	settingsHoverLeaveDelayDesc: "鼠标离开链接或编辑窗口后，延迟多久关闭浮窗（毫秒）。",
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
@@ -156,10 +159,13 @@ const EN_US: Record<I18nKey, string> = {
 	typeLabelImageMarkdown: "Markdown image",
 	typeLabelUrl: "URL",
 	settingsTriggerModeName: "Trigger mode",
-	settingsTriggerModeDesc: "Choose how to trigger the editing popover. With Ctrl+Click or Shift+Click, you must hold the modifier key while clicking a link to open the editor.",
+	settingsTriggerModeDesc: "Choose how to trigger the editing popover. With Ctrl+Click or Shift+Click, you must hold the modifier key while clicking a link to open the editor. With Hover, the popover opens when your cursor rests on a link, while clicks retain their default behavior.",
 	settingsTriggerModeClick: "Click",
 	settingsTriggerModeCtrlClick: "Ctrl+Click",
 	settingsTriggerModeShiftClick: "Shift+Click",
+	settingsTriggerModeHover: "Hover",
+	settingsHoverLeaveDelayName: "Hover close delay",
+	settingsHoverLeaveDelayDesc: "How long to wait (in ms) after the cursor leaves the link or popover before closing it.",
 };
 
 export function createTranslator(localeHint: string): (key: I18nKey) => string {

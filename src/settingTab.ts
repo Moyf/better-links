@@ -45,21 +45,49 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
+        let hoverDelaySettingEl: HTMLElement | null = null;
+
         behaviorGroup.addSetting((setting) => {
             setting
                 .setName(t("settingsTriggerModeName"))
                 .setDesc(t("settingsTriggerModeDesc"))
                 .addDropdown((dropdown) => {
                     dropdown
+                        .addOption("hover", t("settingsTriggerModeHover"))
                         .addOption("click", t("settingsTriggerModeClick"))
                         .addOption("ctrl-click", t("settingsTriggerModeCtrlClick"))
                         .addOption("shift-click", t("settingsTriggerModeShiftClick"))
-                        .setValue(this.plugin.settings.triggerMode ?? "click")
+                        .setValue(this.plugin.settings.triggerMode ?? "hover")
                         .onChange(async (value) => {
                             this.plugin.settings.triggerMode = value as typeof this.plugin.settings.triggerMode;
                             await this.plugin.saveSettings();
+                            hoverDelaySettingEl?.toggleClass("is-hidden", value !== "hover");
                         });
                 });
+        });
+
+        behaviorGroup.addSetting((setting) => {
+            hoverDelaySettingEl = setting.settingEl;
+            setting
+                .setName(t("settingsHoverLeaveDelayName"))
+                .setDesc(t("settingsHoverLeaveDelayDesc"))
+                .addText((text) => {
+                    text
+                        .setPlaceholder("500")
+                        .setValue(String(this.plugin.settings.hoverLeaveDelay ?? 500))
+                        .onChange(async (value) => {
+                            const parsed = parseInt(value, 10);
+                            if (!isNaN(parsed) && parsed >= 0) {
+                                this.plugin.settings.hoverLeaveDelay = parsed;
+                                await this.plugin.saveSettings();
+                            }
+                        });
+                    text.inputEl.type = "number";
+                    text.inputEl.min = "0";
+                    text.inputEl.max = "5000";
+                    text.inputEl.step = "100";
+                });
+            setting.settingEl.toggleClass("is-hidden", (this.plugin.settings.triggerMode ?? "hover") !== "hover");
         });
 
         behaviorGroup.addSetting((setting) => {

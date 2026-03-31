@@ -13,6 +13,7 @@ export interface PopoverEditorState {
 	showDelete: boolean;
 	showEmbedToggle: boolean;
 	isEmbedded: boolean;
+	showCtrlClickHint: boolean;
 }
 
 export interface PopoverEditorEvents {
@@ -30,6 +31,9 @@ export interface PopoverEditorEvents {
 export type PopoverTranslateFn = (key: I18nKey) => string;
 
 export class PopoverEditor {
+	/** 外层透明容器：用于扩展鼠标交互区域，Popper 定位目标 */
+	private readonly wrapperEl: HTMLElement;
+	/** 内层视觉容器：实际的 popover 样式 */
 	private readonly rootEl: HTMLElement;
 	private readonly typeBadgeEl: HTMLElement;
 	private readonly displayInputEl: HTMLInputElement;
@@ -38,6 +42,7 @@ export class PopoverEditor {
 	private readonly copyUrlButtonEl: HTMLButtonElement;
 	private readonly embedButtonEl: HTMLButtonElement;
 	private readonly deleteButtonEl: HTMLButtonElement;
+	private readonly ctrlClickHintEl: HTMLElement;
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
@@ -47,8 +52,9 @@ export class PopoverEditor {
 		private readonly events: PopoverEditorEvents,
 		private readonly t: PopoverTranslateFn,
 	) {
-		this.rootEl = document.body.createDiv({ cls: "better-links-popover" });
-		this.rootEl.hide();
+		this.wrapperEl = document.body.createDiv({ cls: "better-links-popover-wrapper" });
+		this.wrapperEl.hide();
+		this.rootEl = this.wrapperEl.createDiv({ cls: "better-links-popover" });
 
 		/* ── badge row (type label only) ── */
 		const badgeRow = this.rootEl.createDiv({ cls: "better-links-popover__badge-row" });
@@ -84,7 +90,7 @@ export class PopoverEditor {
 			this.events.onOpen(this.displayInputEl.value, this.destinationInputEl.value);
 		});
 
-		leftEl.createSpan({
+		this.ctrlClickHintEl = leftEl.createSpan({
 			cls: "better-links-popover__open-hint",
 			text: this.t("popoverHintCtrlClick"),
 		});
@@ -133,7 +139,17 @@ export class PopoverEditor {
 	}
 
 	isOpen(): boolean {
-		return this.rootEl.isShown();
+		return this.wrapperEl.isShown();
+	}
+
+	/** 检查某个节点是否在 popover 交互区域内（含外层 wrapper） */
+	containsElement(node: Node): boolean {
+		return this.wrapperEl.contains(node);
+	}
+
+	/** 获取外层交互容器用于事件绑定 */
+	get rootElement(): HTMLElement {
+		return this.wrapperEl;
 	}
 
 	open(referenceEl: HTMLElement, state: PopoverEditorState): void {
@@ -152,16 +168,20 @@ export class PopoverEditor {
 		setIcon(this.copyUrlButtonEl, state.copyUrlIcon);
 		this.deleteButtonEl.toggleClass("is-hidden", !state.showDelete);
 
+		/* Ctrl+Click hint */
+		this.ctrlClickHintEl.toggleClass("is-hidden", !state.showCtrlClickHint);
+
 		/* Embed toggle button */
 		this.embedButtonEl.toggleClass("is-hidden", !state.showEmbedToggle);
 		this.updateEmbedState(state.isEmbedded);
 
 		/* Place off-screen first to let Popper compute without flash */
-		this.rootEl.setCssStyles({ visibility: "hidden" });
-		this.rootEl.show();
+		this.rootEl.removeClass("is-visible");
+		this.wrapperEl.setCssStyles({ visibility: "hidden" });
+		this.wrapperEl.show();
 
 		this.popperInstance?.destroy();
-		this.popperInstance = createPopper(referenceEl, this.rootEl, {
+		this.popperInstance = createPopper(referenceEl, this.wrapperEl, {
 			placement: "top-start",
 			modifiers: [
 				{ name: "offset", options: { offset: [0, 6] } },
@@ -170,9 +190,12 @@ export class PopoverEditor {
 			],
 		});
 
-		/* Wait for Popper to finish positioning, then reveal */
+		/* Wait for Popper to finish positioning, then reveal with fade-in */
 		void this.popperInstance.update().then(() => {
-			this.rootEl.setCssStyles({ visibility: "" });
+			this.wrapperEl.setCssStyles({ visibility: "" });
+			requestAnimationFrame(() => {
+				this.rootEl.addClass("is-visible");
+			});
 		});
 
 		this.attachGlobalListeners(referenceEl);
@@ -184,14 +207,15 @@ export class PopoverEditor {
 
 	close(): void {
 		this.detachGlobalListeners();
+		this.rootEl.removeClass("is-visible");
 		this.popperInstance?.destroy();
 		this.popperInstance = null;
-		this.rootEl.hide();
+		this.wrapperEl.hide();
 	}
 
 	destroy(): void {
 		this.close();
-		this.rootEl.remove();
+		this.wrapperEl.remove();
 	}
 
 	private createIconButton(
@@ -216,7 +240,7 @@ export class PopoverEditor {
 		this.outsidePointerDownHandler = (event: PointerEvent) => {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (this.rootEl.contains(target) || referenceEl.contains(target)) return;
+			if (this.wrapperEl.contains(target) || referenceEl.contains(target)) return;
 			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
 			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
 			this.events.onClose();

@@ -79,6 +79,16 @@ export class LinkEditManager {
 		return this.popoverEditor.isOpen();
 	}
 
+	/** 检查某个 DOM 节点是否在 popover 区域内 */
+	isMouseOverPopover(node: Node): boolean {
+		return this.popoverEditor.containsElement(node);
+	}
+
+	/** 获取 popover 根元素用于外部事件绑定 */
+	get popoverRootElement(): HTMLElement {
+		return this.popoverEditor.rootElement;
+	}
+
 	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
 		this.cancelPendingValidation();
 		this.suggest.close();
@@ -87,6 +97,7 @@ export class LinkEditManager {
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
 		const isEmbedded = match.originalText.startsWith("!");
+		const showCtrlClickHint = (this.plugin.settings.triggerMode ?? "click") === "click";
 		this.popoverEditor.open(referenceEl, {
 			displayText: match.displayText,
 			destination: match.destination,
@@ -98,6 +109,7 @@ export class LinkEditManager {
 			showDelete: !isImage,
 			showEmbedToggle,
 			isEmbedded,
+			showCtrlClickHint,
 		});
 
 		// 只对 wiki / markdown 非图片链接更新 suggest 上下文

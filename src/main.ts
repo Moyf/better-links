@@ -48,6 +48,25 @@ export default class BetterLinksPlugin extends Plugin {
 			{ capture: true }
 		);
 
+		this.registerDomEvent(
+			document,
+			"mousemove",
+			(event: MouseEvent) => {
+				this.linkInterceptor.handleMouseMove(event);
+			},
+		);
+
+		// hover 模式：popover 区域的鼠标事件（阻止离开时关闭）
+		const popoverRoot = this.linkEditManager.popoverRootElement;
+		this.registerDomEvent(popoverRoot, "mouseenter", () => {
+			this.linkInterceptor.cancelHoverHide();
+		});
+		this.registerDomEvent(popoverRoot, "mouseleave", () => {
+			if ((this.settings.triggerMode ?? "click") === "hover") {
+				this.linkInterceptor.scheduleHoverHide();
+			}
+		});
+
 		this.registerEvent(
 			this.app.workspace.on("active-leaf-change", () => {
 				this.linkEditManager.close();
@@ -66,6 +85,7 @@ export default class BetterLinksPlugin extends Plugin {
 
 	onunload(): void {
 		this.linkEditManager?.destroy();
+		this.linkInterceptor?.destroy();
 	}
 
 	async loadSettings(): Promise<void> {
