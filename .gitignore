@@ -29,3 +29,4 @@ scripts/sync-agents.ps1
 scripts/sync-agents.sh
 # Build output
 dist/
+/.sisyphus
