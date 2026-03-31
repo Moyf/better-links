@@ -4,6 +4,8 @@ export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
 /** 触发编辑浮窗的方式 */
 export type TriggerMode = "click" | "ctrl-click" | "shift-click" | "hover";
+/** 排除特定链接的模式 */
+export type ExcludeMode = "disabled" | "hover" | "click" | "all";
 
 export interface BetterLinksSettings {
 	enabled: boolean;
@@ -33,6 +35,10 @@ export interface BetterLinksSettings {
     triggerMode?: TriggerMode;
     /** 总是在编辑窗显示 displayText（含自动推导的默认值） */
     alwaysShowDisplayText?: boolean;
+    /** 排除特定链接的模式（disabled = 不排除） */
+    excludeMode?: ExcludeMode;
+    /** 排除关键字列表，逗号或换行分隔 */
+    excludeKeywords?: string;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -53,4 +59,6 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     showEmbedToggle: true,
     triggerMode: "hover",
     alwaysShowDisplayText: false,
+    excludeMode: "disabled",
+    excludeKeywords: ".base, .canvas",
 };

@@ -84,6 +84,15 @@ const ZH_CN = {
 	settingsTriggerModeHover: "悬浮",
 	settingsAlwaysShowDisplayTextName: "总是显示 DisplayText",
 	settingsAlwaysShowDisplayTextDesc: "关闭时，没有显式设置显示文本的链接（如纯 URL、[[笔记名]]）在编辑窗中 DisplayText 输入框将保持空白。",
+	settingsExcludeGroup: "排除特定链接",
+	settingsExcludeModeName: "何时排除",
+	settingsExcludeModeDesc: "当链接目标包含排除关键字时，在所选的触发场景下跳过编辑浮窗。",
+	settingsExcludeModeDisabled: "禁用",
+	settingsExcludeModeHover: "悬浮",
+	settingsExcludeModeClick: "点击",
+	settingsExcludeModeAll: "全部",
+	settingsExcludeKeywordsName: "排除关键字",
+	settingsExcludeKeywordsDesc: "链接目标包含以下任一关键字时，不弹出编辑浮窗。用逗号或换行分隔。",
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
@@ -170,6 +179,15 @@ const EN_US: Record<I18nKey, string> = {
 	settingsTriggerModeHover: "Hover",
 	settingsAlwaysShowDisplayTextName: "Always show display text",
 	settingsAlwaysShowDisplayTextDesc: "When off, links without explicit display text (e.g. plain URLs, [[notename]]) will show an empty display text field in the editor.",
+	settingsExcludeGroup: "Exclude specific links",
+	settingsExcludeModeName: "When to exclude",
+	settingsExcludeModeDesc: "Skip the editing popover when the link destination contains any exclude keyword, under the selected trigger scenario.",
+	settingsExcludeModeDisabled: "Disabled",
+	settingsExcludeModeHover: "Hover",
+	settingsExcludeModeClick: "Click",
+	settingsExcludeModeAll: "All",
+	settingsExcludeKeywordsName: "Exclude keywords",
+	settingsExcludeKeywordsDesc: "The editing popover will not appear when the link destination contains any of these keywords. Separate with commas or newlines.",
 };
 
 export function createTranslator(localeHint: string): (key: I18nKey) => string {

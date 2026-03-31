@@ -292,5 +292,56 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 					});
 				});
 		});
+
+		// ── 排除特定链接 group ──────────────────────────────────────────────
+		const excludeGroup = new SettingGroup(containerEl)
+			.setHeading(t("settingsExcludeGroup"))
+			.addClass("better-links-settings-group");
+
+		let excludeKeywordsEl: HTMLElement | null = null;
+
+		const updateExcludeSubSettings = () => {
+			const mode = this.plugin.settings.excludeMode ?? "disabled";
+			excludeKeywordsEl?.toggleClass("is-hidden", mode === "disabled");
+		};
+
+		excludeGroup.addSetting((setting) => {
+			setting
+				.setName(t("settingsExcludeModeName"))
+				.setDesc(t("settingsExcludeModeDesc"))
+				.addDropdown((dropdown) => {
+					dropdown
+						.addOption("disabled", t("settingsExcludeModeDisabled"))
+						.addOption("hover", t("settingsExcludeModeHover"))
+						.addOption("click", t("settingsExcludeModeClick"))
+						.addOption("all", t("settingsExcludeModeAll"))
+						.setValue(this.plugin.settings.excludeMode ?? "disabled")
+						.onChange(async (value) => {
+							this.plugin.settings.excludeMode = value as typeof this.plugin.settings.excludeMode;
+							await this.plugin.saveSettings();
+							updateExcludeSubSettings();
+						});
+				});
+		});
+
+		excludeGroup.addSetting((setting) => {
+			excludeKeywordsEl = setting.settingEl;
+			setting
+				.setName(t("settingsExcludeKeywordsName"))
+				.setDesc(t("settingsExcludeKeywordsDesc"))
+				.addTextArea((textArea) => {
+					textArea
+						.setPlaceholder(".base, .canvas")
+						.setValue(this.plugin.settings.excludeKeywords ?? ".base, .canvas")
+						.onChange(async (value) => {
+							this.plugin.settings.excludeKeywords = value;
+							await this.plugin.saveSettings();
+						});
+					textArea.inputEl.rows = 3;
+					textArea.inputEl.cols = 30;
+				});
+		});
+
+		updateExcludeSubSettings();
 	}
 }

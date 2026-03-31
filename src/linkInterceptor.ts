@@ -5,10 +5,32 @@ import { findLinkAtOffset, withEditorRange, type EditorLinkMatch } from "./linkD
 import type { LinkEditManager } from "./linkEditManager";
 import { normalizeEditableValues, openLink } from "./linkActions";
 
+import type { ExcludeMode } from "./settings";
+
 /** 悬浮触发的延迟（ms） */
 const HOVER_DELAY = 300;
 /** 鼠标离开链接/popover 后关闭的延迟（ms） */
 const HOVER_LEAVE_DELAY = 500;
+
+/**
+ * 解析排除关键字字符串（逗号或换行分隔）为 trimmed 非空数组
+ */
+function parseExcludeKeywords(raw: string | undefined): string[] {
+	if (!raw) return [];
+	return raw
+		.split(/[,\n]/)
+		.map((k) => k.trim().toLowerCase())
+		.filter((k) => k.length > 0);
+}
+
+/**
+ * 检查链接目标是否匹配任一排除关键字
+ */
+function matchesExcludeKeyword(destination: string, keywords: string[]): boolean {
+	if (keywords.length === 0) return false;
+	const lower = destination.toLowerCase();
+	return keywords.some((kw) => lower.includes(kw));
+}
 
 export class LinkInterceptor {
 	/** hover 模式：延迟显示定时器 */
@@ -122,6 +144,15 @@ export class LinkInterceptor {
 
 		if (!match) {
 			return;
+		}
+
+		// 排除特定链接：click / all 模式下跳过
+		const excludeMode: ExcludeMode = this.plugin.settings.excludeMode ?? "disabled";
+		if (excludeMode === "click" || excludeMode === "all") {
+			const keywords = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
+			if (matchesExcludeKeyword(match.destination, keywords)) {
+				return;
+			}
 		}
 
 		const editorMatch = withEditorRange(match, position.line, markdownView.file.path);
@@ -253,6 +284,15 @@ export class LinkInterceptor {
 
 		if (!match) {
 			return null;
+		}
+
+		// 排除特定链接：hover / all 模式下跳过
+		const excludeMode: ExcludeMode = this.plugin.settings.excludeMode ?? "disabled";
+		if (excludeMode === "hover" || excludeMode === "all") {
+			const keywords = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
+			if (matchesExcludeKeyword(match.destination, keywords)) {
+				return null;
+			}
 		}
 
 		// 坐标验证：取链接在视图中的像素坐标
