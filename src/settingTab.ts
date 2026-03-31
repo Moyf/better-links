@@ -102,6 +102,18 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
+        behaviorGroup.addSetting((setting) => {
+            setting
+                .setName(t("settingsAlwaysShowDisplayTextName"))
+                .setDesc(t("settingsAlwaysShowDisplayTextDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.alwaysShowDisplayText ?? false).onChange(async (value) => {
+                        this.plugin.settings.alwaysShowDisplayText = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
         // ── 链接建议 group ────────────────────────────────────────────────────
         const suggestGroup = new SettingGroup(containerEl)
             .setHeading(t("settingsLinkSuggestionsGroup"))

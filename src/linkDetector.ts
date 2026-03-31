@@ -41,9 +41,24 @@ export function withEditorRange(match: RelativeLinkMatch, line: number, sourcePa
 	};
 }
 
-export function serializeEditedLink(match: EditorLinkMatch, displayText: string, destination: string): string {
+export interface SerializeOptions {
+	/** OB 是否配置为使用 Wiki 链接格式（用于外部→内部链接转换） */
+	preferWikiLink?: boolean;
+}
+
+export function serializeEditedLink(match: EditorLinkMatch, displayText: string, destination: string, options?: SerializeOptions): string {
 	const nextDisplayText = displayText.trim();
 	const nextDestination = destination.trim();
+
+	// 检测是否从外部链接转为内部链接
+	const wasExternal = isLikelyExternalDestination(match.destination);
+	const nowInternal = !isLikelyExternalDestination(nextDestination) && nextDestination.length > 0;
+	if (wasExternal && nowInternal && options?.preferWikiLink) {
+		// 外部→内部 且 OB 设置为 wiki 格式：转为 wikilink
+		const shouldIncludeAlias = nextDisplayText.length > 0 && nextDisplayText !== prettifyWikiTarget(nextDestination);
+		return shouldIncludeAlias ? `[[${nextDestination}|${nextDisplayText}]]` : `[[${nextDestination}]]`;
+	}
+
 	if (match.type === "imageWiki") {
 		if (!nextDestination) {
 			return "";
@@ -76,6 +91,10 @@ export function serializeEditedLink(match: EditorLinkMatch, displayText: string,
 	if (match.type === "markdown") {
 		const useEmbedSyntax = match.originalText.startsWith("![");
 		const prefix = useEmbedSyntax ? "!" : "";
+		// 非嵌入且 display text 为空时退化为纯 URL
+		if (!useEmbedSyntax && nextDisplayText.length === 0) {
+			return nextDestination;
+		}
 		return `${prefix}[${nextDisplayText}](${nextDestination})`;
 	}
 

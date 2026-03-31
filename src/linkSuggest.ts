@@ -89,11 +89,13 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		// ── 1. 计算 destination 值（遵循 OB 内部链接格式设置）────────────────
 		let destination: string;
 		let subpath: string | undefined;
+		const isSameFile = item.file.path === this.sourcePath;
 
 		if (item.kind === "file") {
 			destination = this.getDestinationPath(item.file);
 		} else {
-			destination = this.getDestinationPath(item.file);
+			// 当前笔记内的标题：使用 #heading 格式，省略笔记名
+			destination = isSameFile ? "" : this.getDestinationPath(item.file);
 			subpath = item.heading.heading;
 		}
 
@@ -101,7 +103,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		this.setValue(fullDestination);
 
 		// ── 2. 同步 displayText（按设置决定）────────────────────────────────
-		const alias = this.computeAlias(item);
+		const alias = this.computeAlias(item, isSameFile);
 		if (alias !== null) {
 			this.callbacks.setDisplayText(alias);
 		}
@@ -171,7 +173,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	 * 根据设置计算选中后应填入 displayText 的别名。
 	 * 返回 null 表示不修改 displayText。
 	 */
-	private computeAlias(item: LinkSuggestion): string | null {
+	private computeAlias(item: LinkSuggestion, isSameFile = false): string | null {
 		if (!(this.settings.syncAlias ?? false)) return null;
 
 		const mode = this.settings.aliasSyncMode ?? "heading-only";
@@ -185,6 +187,12 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 
 		// 选中的是标题
 		const headingText = item.heading.heading;
+
+		// 当前笔记内的标题：只用标题本身，不拼接笔记名
+		if (isSameFile) {
+			return headingText;
+		}
+
 		const fileName = this.getDisplayName(item.file);
 
 		switch (mode) {

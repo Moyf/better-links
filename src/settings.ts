@@ -33,6 +33,8 @@ export interface BetterLinksSettings {
     triggerMode?: TriggerMode;
     /** hover 模式：鼠标离开后关闭浮窗的延迟（ms） */
     hoverLeaveDelay?: number;
+    /** 总是在编辑窗显示 displayText（含自动推导的默认值） */
+    alwaysShowDisplayText?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -53,4 +55,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     showEmbedToggle: true,
     triggerMode: "hover",
     hoverLeaveDelay: 500,
+    alwaysShowDisplayText: false,
 };

@@ -82,6 +82,8 @@ const ZH_CN = {
 	settingsTriggerModeHover: "悬浮",
 	settingsHoverLeaveDelayName: "悬浮关闭延迟",
 	settingsHoverLeaveDelayDesc: "鼠标离开链接或编辑窗口后，延迟多久关闭浮窗（毫秒）。",
+	settingsAlwaysShowDisplayTextName: "总是显示 DisplayText",
+	settingsAlwaysShowDisplayTextDesc: "关闭时，没有显式设置显示文本的链接（如纯 URL、[[笔记名]]）在编辑窗中 DisplayText 输入框将保持空白。",
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
@@ -166,6 +168,8 @@ const EN_US: Record<I18nKey, string> = {
 	settingsTriggerModeHover: "Hover",
 	settingsHoverLeaveDelayName: "Hover close delay",
 	settingsHoverLeaveDelayDesc: "How long to wait (in ms) after the cursor leaves the link or popover before closing it.",
+	settingsAlwaysShowDisplayTextName: "Always show display text",
+	settingsAlwaysShowDisplayTextDesc: "When off, links without explicit display text (e.g. plain URLs, [[notename]]) will show an empty display text field in the editor.",
 };
 
 export function createTranslator(localeHint: string): (key: I18nKey) => string {

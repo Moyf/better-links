@@ -98,8 +98,12 @@ export class LinkEditManager {
 		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
 		const isEmbedded = match.originalText.startsWith("!");
 		const showCtrlClickHint = (this.plugin.settings.triggerMode ?? "click") === "click";
+		// alwaysShowDisplayText 关闭时，没有显式 displayText 的链接显示空输入框
+		const displayText = (this.plugin.settings.alwaysShowDisplayText ?? false) || match.hasExplicitDisplayText
+			? match.displayText
+			: "";
 		this.popoverEditor.open(referenceEl, {
-			displayText: match.displayText,
+			displayText,
 			destination: match.destination,
 			typeLabel: linkTypeLabel(match.type, this.plugin),
 			isImage,
@@ -169,7 +173,9 @@ export class LinkEditManager {
 			return;
 		}
 
-		const nextText = serializeEditedLink(session.match, displayText, destination);
+		const nextText = serializeEditedLink(session.match, displayText, destination, {
+			preferWikiLink: shouldUseWikiLinkFormat(this.plugin.app),
+		});
 		if (nextText === session.match.originalText) return; // no change
 
 		session.match.destination = destination.trim();
