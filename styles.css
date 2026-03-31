@@ -60,7 +60,6 @@
 
 .better-links-popover__input-row .better-links-popover__input {
 	width: 100%;
-	padding-right: 26px;
 }
 
 .better-links-popover__input-warning {
@@ -72,6 +71,7 @@
 	font-size: var(--font-ui-small);
 	line-height: 1;
 	pointer-events: auto;
+	text-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .better-links-popover__input-warning.is-hidden {
