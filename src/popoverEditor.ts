@@ -24,7 +24,8 @@ export interface PopoverEditorEvents {
 	onCopyUrl: (destination: string) => void;
 	onDelete: (forceRemoveAll: boolean) => void;
 	onToggleEmbed: () => void;
-	onClose: (force: boolean) => void;
+	onForceSave: () => void;
+	onClose: () => void;
 	onDiscard: () => void;
 	onDestinationInput?: (destination: string) => void;
 }
@@ -45,6 +46,8 @@ export class PopoverEditor {
 	private readonly deleteButtonEl: HTMLButtonElement;
 	private readonly ctrlClickHintEl: HTMLElement;
 	private readonly openButtonEl: HTMLButtonElement;
+	private readonly forceSaveButtonEl: HTMLButtonElement;
+	private readonly destinationWarningEl: HTMLElement;
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
@@ -70,9 +73,17 @@ export class PopoverEditor {
 			attr: { type: "text", placeholder: this.t("popoverPlaceholderDisplay") },
 		});
 
-		this.destinationInputEl = formEl.createEl("input", {
+		const destinationRow = formEl.createDiv({ cls: "better-links-popover__input-row" });
+
+		this.destinationInputEl = destinationRow.createEl("input", {
 			cls: "better-links-popover__input",
 			attr: { type: "text", placeholder: this.t("popoverPlaceholderDestination") },
+		});
+
+		this.destinationWarningEl = destinationRow.createSpan({
+			cls: "better-links-popover__input-warning is-hidden",
+			text: "⚠️",
+			attr: { "aria-label": this.t("popoverWarningTargetNotFound") },
 		});
 
 		this.destinationInputEl.addEventListener("input", () => {
@@ -110,6 +121,11 @@ export class PopoverEditor {
 			const forceRemoveAll = event instanceof MouseEvent && (event.ctrlKey || event.metaKey);
 			this.events.onDelete(forceRemoveAll);
 		}, true);
+
+		this.forceSaveButtonEl = this.createIconButton(rightEl, "check", this.t("popoverAriaForceSave"), () => {
+			this.events.onForceSave();
+		});
+		this.forceSaveButtonEl.toggleClass("is-hidden", true);
 	}
 
 	getValues(): { displayText: string; destination: string } {
@@ -133,6 +149,8 @@ export class PopoverEditor {
 
 	setDestinationWarning(hasWarning: boolean): void {
 		this.destinationInputEl.toggleClass("mod-warning", hasWarning);
+		this.destinationWarningEl.toggleClass("is-hidden", !hasWarning);
+		this.forceSaveButtonEl.toggleClass("is-hidden", !hasWarning);
 	}
 
 	/** 检查 popover 中是否有输入框获焦 */
@@ -165,6 +183,8 @@ export class PopoverEditor {
 		this.displayInputEl.value = state.displayText;
 		this.destinationInputEl.value = state.destination;
 		this.destinationInputEl.removeClass("mod-warning");
+		this.destinationWarningEl.toggleClass("is-hidden", true);
+		this.forceSaveButtonEl.toggleClass("is-hidden", true);
 		this.displayInputEl.placeholder = state.isImage
 			? this.t("popoverPlaceholderImageSize")
 			: this.t("popoverPlaceholderDisplay");
@@ -254,7 +274,7 @@ export class PopoverEditor {
 			if (this.wrapperEl.contains(target) || referenceEl.contains(target)) return;
 			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
 			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
-			this.events.onClose(false);
+			this.events.onClose();
 		};
 
 		this.keydownHandler = (event: KeyboardEvent) => {
@@ -263,10 +283,12 @@ export class PopoverEditor {
 
 			if (event.key === "Escape") {
 				event.preventDefault();
+				event.stopPropagation();
 				this.events.onDiscard();
 			} else if (event.key === "Enter") {
 				event.preventDefault();
-				this.events.onClose(event.ctrlKey || event.metaKey);
+				event.stopPropagation();
+				this.events.onClose();
 			}
 		};
 

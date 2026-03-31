@@ -53,6 +53,31 @@
 	font-size: var(--font-ui-small);
 }
 
+/* destination 输入行：input + 浮动警告图标 */
+.better-links-popover__input-row {
+	position: relative;
+}
+
+.better-links-popover__input-row .better-links-popover__input {
+	width: 100%;
+	padding-right: 26px;
+}
+
+.better-links-popover__input-warning {
+	position: absolute;
+	right: 6px;
+	top: 50%;
+	transform: translateY(-50%);
+	cursor: default;
+	font-size: var(--font-ui-small);
+	line-height: 1;
+	pointer-events: auto;
+}
+
+.better-links-popover__input-warning.is-hidden {
+	display: none;
+}
+
 .better-links-popover__input:focus {
 	border-color: var(--interactive-accent);
 	outline: none;

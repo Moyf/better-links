@@ -45,8 +45,11 @@ export class LinkEditManager {
 			onToggleEmbed: () => {
 				this.toggleEmbed();
 			},
-			onClose: (force) => {
-				this.saveAndClose(force);
+			onClose: () => {
+				this.saveAndClose();
+			},
+			onForceSave: () => {
+				this.forceSaveAndClose();
 			},
 			onDiscard: () => {
 				this.discardAndClose();
@@ -147,12 +150,25 @@ export class LinkEditManager {
 	}
 
 	/** Auto-save current edits then close the popover. */
-	private saveAndClose(force = false): void {
+	private saveAndClose(): void {
 		if (this.activeSession && this.popoverEditor.isOpen()) {
 			const { displayText, destination } = this.popoverEditor.getValues();
-			// 校验失败时需要明确告知用户，不能静默
 			const silent = !this.destinationInvalid;
-			this.save(displayText, destination, silent, force);
+			this.save(displayText, destination, silent);
+		}
+		this.cancelPendingValidation();
+		this.closeSuggest();
+		this.destinationInvalid = false;
+		this.activeSession = null;
+		this.popoverEditor.close();
+	}
+
+	/** 强制保存（跳过校验）并关闭。 */
+	private forceSaveAndClose(): void {
+		if (this.activeSession && this.popoverEditor.isOpen()) {
+			const { displayText, destination } = this.popoverEditor.getValues();
+			this.destinationInvalid = false;
+			this.save(displayText, destination, true);
 		}
 		this.cancelPendingValidation();
 		this.closeSuggest();
@@ -170,12 +186,12 @@ export class LinkEditManager {
 		this.popoverEditor.close();
 	}
 
-	private save(displayText: string, destination: string, silent = false, force = false): void {
+	private save(displayText: string, destination: string, silent = false): void {
 		const session = this.activeSession;
 		if (!session) return;
 
-		// 如果目标校验失败且未强制保存，阻止保存
-		if (this.destinationInvalid && !force) {
+		// 如果目标校验失败，阻止保存
+		if (this.destinationInvalid) {
 			if (!silent) {
 				new Notice(this.plugin.t("noticeInternalLinkNotFound"));
 			}
@@ -418,12 +434,8 @@ function copyUrlLabel(match: EditorLinkMatch, plugin: BetterLinksPlugin): string
 	return plugin.t("popoverAriaCopyUrl");
 }
 
-function copyUrlIcon(match: EditorLinkMatch): string {
-	if (match.type === "imageWiki" || match.type === "imageMarkdown") {
-		return "file";
-	}
-
-	return isLikelyExternalDestination(match.destination) ? "link" : "file";
+function copyUrlIcon(_match: EditorLinkMatch): string {
+	return "link";
 }
 
 /** 是否支持嵌入切换（只有 wiki / markdown 类型支持 ! 前缀） */
