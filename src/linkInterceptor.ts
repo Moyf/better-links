@@ -96,13 +96,30 @@ export class LinkInterceptor {
 			}
 		}
 
+		const triggerMode = this.plugin.settings.triggerMode ?? "click";
+
+		if (triggerMode === "ctrl-click") {
+			if (!(event.ctrlKey || event.metaKey)) {
+				// 没按 Ctrl/Cmd，不拦截，保留默认点击行为
+				return;
+			}
+		} else if (triggerMode === "shift-click") {
+			if (!event.shiftKey) {
+				// 没按 Shift，不拦截，保留默认点击行为
+				return;
+			}
+		}
+
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (event.ctrlKey || event.metaKey) {
-			const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
-			await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);
-			return;
+		if (triggerMode === "click") {
+			// 默认模式：Ctrl/Cmd+Click 直接打开链接而非弹编辑窗
+			if (event.ctrlKey || event.metaKey) {
+				const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
+				await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);
+				return;
+			}
 		}
 
 		if (!target.isConnected) {

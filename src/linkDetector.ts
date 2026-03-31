@@ -129,7 +129,7 @@ export function defaultDisplayText(match: Pick<EditorLinkMatch, "type" | "displa
 }
 
 export function isLikelyExternalDestination(destination: string): boolean {
-	return /^(https?:|mailto:|obsidian:)/i.test(destination.trim());
+	return /^(https?:|mailto:|obsidian:|file:|ftp:|ssh:|tel:|data:|blob:)/i.test(destination.trim());
 }
 
 export function isLikelyInternalDestination(destination: string): boolean {
@@ -147,6 +147,7 @@ export function isLikelyInternalDestination(destination: string): boolean {
 
 function collectMatches(lineText: string, settings: BetterLinksSettings): RelativeLinkMatch[] {
 	const matches: RelativeLinkMatch[] = [];
+	const inlineCodeRanges = collectInlineCodeRanges(lineText);
 
 	if (settings.enableWikiLinks) {
 		for (const match of lineText.matchAll(WIKILINK_PATTERN)) {
@@ -208,6 +209,11 @@ function collectMatches(lineText: string, settings: BetterLinksSettings): Relati
 				continue;
 			}
 
+			// 跳过位于内联代码（反引号）内的纯 URL
+			if (isInsideInlineCode(start, start + originalText.length, inlineCodeRanges)) {
+				continue;
+			}
+
 			matches.push({
 				type: "url",
 				start,
@@ -236,4 +242,32 @@ function rangesOverlap(startA: number, endA: number, startB: number, endB: numbe
 function isImageDestinationPath(destination: string): boolean {
 	const cleaned = destination.split(/[?#]/, 1)[0] ?? destination;
 	return /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/i.test(cleaned.trim());
+}
+
+/** 收集行内所有反引号内联代码的区间 [start, end)（包含反引号本身） */
+function collectInlineCodeRanges(lineText: string): Array<[number, number]> {
+	const ranges: Array<[number, number]> = [];
+	const pattern = /`+/g;
+	let openMatch: RegExpExecArray | null = null;
+
+	while (true) {
+		const tick = pattern.exec(lineText);
+		if (!tick) break;
+
+		if (!openMatch) {
+			openMatch = tick;
+		} else if (tick[0].length === openMatch[0].length) {
+			// 找到匹配的闭合反引号
+			ranges.push([openMatch.index, tick.index + tick[0].length]);
+			openMatch = null;
+		}
+		// 不同长度的反引号序列不匹配，继续寻找
+	}
+
+	return ranges;
+}
+
+/** 检查 [start, end) 是否完全被某个内联代码区间包含 */
+function isInsideInlineCode(start: number, end: number, ranges: Array<[number, number]>): boolean {
+	return ranges.some(([codeStart, codeEnd]) => start >= codeStart && end <= codeEnd);
 }

@@ -130,7 +130,6 @@ export class PopoverEditor {
 		this.embedButtonEl.toggleClass("is-active", isEmbedded);
 		const label = isEmbedded ? this.t("popoverAriaEmbedOn") : this.t("popoverAriaEmbedOff");
 		this.embedButtonEl.setAttribute("aria-label", label);
-		this.embedButtonEl.setAttribute("title", label);
 	}
 
 	isOpen(): boolean {
@@ -148,10 +147,8 @@ export class PopoverEditor {
 
 		const copyUrlLabel = state.isImage ? this.t("popoverAriaCopyFileName") : this.t("popoverAriaCopyUrl");
 		this.copyMarkdownButtonEl.setAttribute("aria-label", state.copyMarkdownLabel);
-		this.copyMarkdownButtonEl.setAttribute("title", state.copyMarkdownLabel);
 
 		this.copyUrlButtonEl.setAttribute("aria-label", state.copyUrlLabel || copyUrlLabel);
-		this.copyUrlButtonEl.setAttribute("title", state.copyUrlLabel || copyUrlLabel);
 		setIcon(this.copyUrlButtonEl, state.copyUrlIcon);
 		this.deleteButtonEl.toggleClass("is-hidden", !state.showDelete);
 
@@ -210,7 +207,6 @@ export class PopoverEditor {
 		});
 		setIcon(btn, icon);
 		btn.addEventListener("click", onClick);
-		btn.setAttribute("title", ariaLabel);
 		return btn;
 	}
 

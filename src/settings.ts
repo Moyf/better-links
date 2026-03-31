@@ -2,6 +2,8 @@ export type ExternalLinkOpenMode = "browser" | "obsidian";
 export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 /** 选中 suggest 时别名的生成模式 */
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
+/** 触发编辑浮窗的方式 */
+export type TriggerMode = "click" | "ctrl-click" | "shift-click";
 
 export interface BetterLinksSettings {
 	enabled: boolean;
@@ -27,6 +29,8 @@ export interface BetterLinksSettings {
     aliasTitleProperty?: string;
     /** 是否在浮窗中显示嵌入切换按钮（! 前缀切换） */
     showEmbedToggle?: boolean;
+    /** 触发编辑浮窗的方式 */
+    triggerMode?: TriggerMode;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -40,9 +44,10 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     edgeProtection: true,
     validateInternalLinks: true,
     enableLinkSuggestions: true,
-    syncAlias: false,
+    syncAlias: true,
     aliasSyncMode: "heading-only",
     aliasSeparator: " > ",
     aliasTitleProperty: "title",
-    showEmbedToggle: false,
+    showEmbedToggle: true,
+    triggerMode: "click",
 };

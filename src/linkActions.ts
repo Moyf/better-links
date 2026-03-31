@@ -32,6 +32,15 @@ export async function openLink(app: App, match: EditorLinkMatch, values: Editabl
 		return;
 	}
 
+	// 非 http(s) 的外部协议（file:、ftp:、ssh: 等）始终通过系统 shell 打开
+	if (isNonHttpExternalDestination(destination)) {
+		if (await openInSystemBrowser(destination)) {
+			return;
+		}
+		// shell 不可用时无其他 fallback，直接返回
+		return;
+	}
+
 	if (settings.externalLinkOpenMode === "browser") {
 		if (await openInSystemBrowser(destination)) {
 			return;
@@ -82,6 +91,12 @@ async function openInSystemBrowser(url: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+/** 检测是否为非 http(s) 的外部协议（file:、ftp:、ssh: 等） */
+function isNonHttpExternalDestination(destination: string): boolean {
+	const trimmed = destination.trim();
+	return isLikelyExternalDestination(trimmed) && !/^https?:/i.test(trimmed);
 }
 
 async function copyText(value: string, successMessage: string): Promise<void> {

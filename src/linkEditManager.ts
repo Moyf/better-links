@@ -295,7 +295,7 @@ export class LinkEditManager {
 		}
 
 		// 外部链接跳过
-		if (/^(https?:|mailto:|obsidian:)/i.test(trimmed)) {
+		if (isLikelyExternalDestination(trimmed)) {
 			this.setWarning(false);
 			return;
 		}

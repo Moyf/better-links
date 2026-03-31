@@ -47,6 +47,23 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
         behaviorGroup.addSetting((setting) => {
             setting
+                .setName(t("settingsTriggerModeName"))
+                .setDesc(t("settingsTriggerModeDesc"))
+                .addDropdown((dropdown) => {
+                    dropdown
+                        .addOption("click", t("settingsTriggerModeClick"))
+                        .addOption("ctrl-click", t("settingsTriggerModeCtrlClick"))
+                        .addOption("shift-click", t("settingsTriggerModeShiftClick"))
+                        .setValue(this.plugin.settings.triggerMode ?? "click")
+                        .onChange(async (value) => {
+                            this.plugin.settings.triggerMode = value as typeof this.plugin.settings.triggerMode;
+                            await this.plugin.saveSettings();
+                        });
+                });
+        });
+
+        behaviorGroup.addSetting((setting) => {
+            setting
                 .setName(t("settingsValidateInternalLinksName"))
                 .setDesc(t("settingsValidateInternalLinksDesc"))
                 .addToggle((toggle) => {

@@ -74,6 +74,11 @@ const ZH_CN = {
 	typeLabelMarkdown: "Markdown",
 	typeLabelImageMarkdown: "Markdown 图片",
 	typeLabelUrl: "URL",
+	settingsTriggerModeName: "触发方式",
+	settingsTriggerModeDesc: "选择打开编辑浮窗的触发方式。选择 Ctrl+Click 或 Shift+Click 时，需按住对应按键点击链接才会弹出编辑窗口。",
+	settingsTriggerModeClick: "点击",
+	settingsTriggerModeCtrlClick: "Ctrl+Click",
+	settingsTriggerModeShiftClick: "Shift+Click",
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
@@ -150,6 +155,11 @@ const EN_US: Record<I18nKey, string> = {
 	typeLabelMarkdown: "Markdown",
 	typeLabelImageMarkdown: "Markdown image",
 	typeLabelUrl: "URL",
+	settingsTriggerModeName: "Trigger mode",
+	settingsTriggerModeDesc: "Choose how to trigger the editing popover. With Ctrl+Click or Shift+Click, you must hold the modifier key while clicking a link to open the editor.",
+	settingsTriggerModeClick: "Click",
+	settingsTriggerModeCtrlClick: "Ctrl+Click",
+	settingsTriggerModeShiftClick: "Shift+Click",
 };
 
 export function createTranslator(localeHint: string): (key: I18nKey) => string {
