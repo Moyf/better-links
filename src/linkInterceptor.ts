@@ -1,7 +1,7 @@
 import { EditorView } from "@codemirror/view";
 import { MarkdownView, Notice } from "obsidian";
 import type BetterLinksPlugin from "./main";
-import { findLinkAtOffset, withEditorRange, type EditorLinkMatch } from "./linkDetector";
+import { findLinkAtOffset, findLinkByDestination, withEditorRange, type EditorLinkMatch } from "./linkDetector";
 import type { LinkEditManager } from "./linkEditManager";
 import { normalizeEditableValues, openLink } from "./linkActions";
 
@@ -164,6 +164,37 @@ export class LinkInterceptor {
 		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
 
 		if (!match) {
+			// fallback：尝试检测 embed-block（callout 等）内的渲染链接
+			const embedResult = this.resolveEmbedBlockLink(target, editorView, markdownView.file.path);
+			if (!embedResult) return;
+
+			const { editorMatch, anchorEl } = embedResult;
+
+			// 排除检查
+			const exMode: ExcludeMode = this.plugin.settings.excludeMode ?? "disabled";
+			if (exMode === "click" || exMode === "all") {
+				const kw = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
+				if (matchesExcludeKeyword(editorMatch.destination, kw)) return;
+			}
+
+			// 修饰键检查
+			if (triggerModifier === "ctrl") {
+				if (!(event.ctrlKey || event.metaKey)) return;
+			} else if (triggerModifier === "shift") {
+				if (!event.shiftKey) return;
+			}
+
+			event.preventDefault();
+			event.stopPropagation();
+
+			// 无修饰键时，Ctrl+Click 直接打开链接
+			if (triggerModifier === "none" && (event.ctrlKey || event.metaKey)) {
+				const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
+				await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);
+				return;
+			}
+
+			this.linkEditManager.show(editorMatch, anchorEl);
 			return;
 		}
 
@@ -306,7 +337,20 @@ export class LinkInterceptor {
 		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
 
 		if (!match) {
-			return null;
+			// fallback：尝试检测 embed-block（callout 等）内的渲染链接
+			const embedResult = this.resolveEmbedBlockLink(target, editorView, markdownView.file.path);
+			if (!embedResult) return null;
+
+			const { editorMatch, anchorEl } = embedResult;
+
+			// 排除检查
+			const exMode: ExcludeMode = this.plugin.settings.excludeMode ?? "disabled";
+			if (exMode === "hover" || exMode === "all") {
+				const kw = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
+				if (matchesExcludeKeyword(editorMatch.destination, kw)) return null;
+			}
+
+			return { editorMatch, targetEl: anchorEl };
 		}
 
 		// 排除特定链接：hover / all 模式下跳过
@@ -372,5 +416,59 @@ export class LinkInterceptor {
 			clearTimeout(this.hoverHideTimer);
 			this.hoverHideTimer = null;
 		}
+	}
+
+	// ── embed-block fallback ───────────────────────────────────────────────
+
+	/**
+	 * 当标准的 posAtCoords → findLinkAtOffset 路径无法命中时（例如 callout 等
+	 * cm-embed-block 内的渲染链接），从 DOM `<a>` 元素反向查找源文本中的链接。
+	 *
+	 * 返回 null 表示不适用或未找到。
+	 */
+	private resolveEmbedBlockLink(
+		target: HTMLElement,
+		editorView: EditorView,
+		sourcePath: string,
+	): { editorMatch: EditorLinkMatch; anchorEl: HTMLElement } | null {
+		// 1. 找到 <a> 元素（target 本身或其祖先）
+		const anchor = target.closest("a") ?? (target.matches("a") ? target : null);
+		if (!anchor) return null;
+
+		// 2. 必须在 cm-embed-block 内（callout / embed 等）
+		const embedBlock = anchor.closest(".cm-embed-block");
+		if (!embedBlock || !(embedBlock instanceof HTMLElement)) return null;
+
+		// 3. 获取链接目标
+		const href = anchor.getAttribute("data-href") ?? anchor.getAttribute("href");
+		if (!href) return null;
+
+		// 4. 用 posAtDOM 将 embed-block 映射到文档偏移
+		let blockOffset: number;
+		try {
+			blockOffset = editorView.posAtDOM(embedBlock);
+		} catch {
+			return null;
+		}
+
+		const doc = editorView.state.doc;
+		const blockLine = doc.lineAt(blockOffset);
+
+		// 5. 从 embed-block 起始行往下扫描，查找 destination 匹配的链接
+		//    callout 通常跨多行，需要扫描整个 block 范围
+		const endOffset = Math.min(blockOffset + embedBlock.textContent!.length * 4, doc.length);
+		const endLine = doc.lineAt(endOffset).number;
+
+		for (let lineNum = blockLine.number; lineNum <= endLine; lineNum++) {
+			const line = doc.line(lineNum);
+			const lineIndex = lineNum - 1; // editor 使用 0-based 行号
+			const match = findLinkByDestination(line.text, href, this.plugin.settings);
+			if (match) {
+				const editorMatch = withEditorRange(match, lineIndex, sourcePath);
+				return { editorMatch, anchorEl: anchor as HTMLElement };
+			}
+		}
+
+		return null;
 	}
 }

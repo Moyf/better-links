@@ -30,6 +30,15 @@ export function findLinkAtOffset(lineText: string, offset: number, settings: Bet
 	return matches.find((match) => offset >= match.start && offset < match.end) ?? null;
 }
 
+/**
+ * 在行文本中查找 destination 匹配的链接（用于 embed-block 等无法精确定位偏移的场景）。
+ * 如果同一行有多个同 destination 链接，返回第一个。
+ */
+export function findLinkByDestination(lineText: string, destination: string, settings: BetterLinksSettings): RelativeLinkMatch | null {
+	const matches = collectMatches(lineText, settings);
+	return matches.find((m) => m.destination === destination) ?? null;
+}
+
 export function withEditorRange(match: RelativeLinkMatch, line: number, sourcePath: string): EditorLinkMatch {
 	return {
 		...match,
