@@ -1,7 +1,14 @@
 /* ── Better Links popover ── */
 
-.better-links-popover {
+/* 外层透明交互容器：扩展鼠标命中区域，不影响视觉 */
+.better-links-popover-wrapper {
 	z-index: var(--layer-popover);
+	padding-right: 86px;
+	display: flex;
+	align-items: flex-end;
+}
+
+.better-links-popover {
 	width: 320px;
 	max-width: calc(100vw - 16px);
 	padding: 8px;
@@ -9,6 +16,12 @@
 	border-radius: var(--radius-m);
 	background: var(--background-primary);
 	box-shadow: var(--shadow-s);
+	opacity: 0;
+	transition: opacity 150ms ease-out;
+}
+
+.better-links-popover.is-visible {
+	opacity: 1;
 }
 
 /* badge row */
@@ -71,7 +84,7 @@
 .better-links-popover__footer-right {
 	display: flex;
 	align-items: center;
-	gap: 2px;
+	gap: 4px;
 }
 
 .better-links-popover__open-hint {
@@ -79,6 +92,10 @@
 	color: var(--text-muted);
 	font-size: var(--font-smallest);
 	white-space: nowrap;
+}
+
+.better-links-popover__open-hint.is-hidden {
+	display: none;
 }
 
 .better-links-popover__icon-btn {

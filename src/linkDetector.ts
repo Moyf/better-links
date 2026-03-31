@@ -129,7 +129,9 @@ export function defaultDisplayText(match: Pick<EditorLinkMatch, "type" | "displa
 }
 
 export function isLikelyExternalDestination(destination: string): boolean {
-	return /^(https?:|mailto:|obsidian:|file:|ftp:|ssh:|tel:|data:|blob:)/i.test(destination.trim());
+	const trimmed = destination.trim();
+	// 匹配 scheme://... 或 scheme:... 格式（scheme 至少 2 个字母，排除 Windows 盘符如 C:\）
+	return /^[a-z][a-z\d+\-.]+:/i.test(trimmed) && !/^[a-z]:[/\\]/i.test(trimmed);
 }
 
 export function isLikelyInternalDestination(destination: string): boolean {
