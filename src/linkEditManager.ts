@@ -105,7 +105,8 @@ export class LinkEditManager {
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
 		const isEmbedded = match.originalText.startsWith("!");
-		const showCtrlClickHint = (this.plugin.settings.triggerMode ?? "click") === "click";
+		const showCtrlClickHint = (this.plugin.settings.triggerMethod ?? "hover") === "click"
+			&& (this.plugin.settings.triggerModifier ?? "none") === "none";
 		// alwaysShowDisplayText 关闭时，没有显式 displayText 的链接显示空输入框
 		const displayText = (this.plugin.settings.alwaysShowDisplayText ?? false) || match.hasExplicitDisplayText
 			? match.displayText

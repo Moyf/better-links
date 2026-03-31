@@ -50,9 +50,29 @@ export class LinkInterceptor {
 	}
 
 	handleMouseMove(event: MouseEvent): void {
-		const triggerMode = this.plugin.settings.triggerMode ?? "click";
-		if (triggerMode !== "hover") return;
+		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
+		if (triggerMethod !== "hover") return;
 		if (!this.plugin.settings.enabled) return;
+
+		// 修饰键检查
+		const modifier = this.plugin.settings.triggerModifier ?? "none";
+		const hasAnyModifier = event.ctrlKey || event.metaKey || event.shiftKey;
+		const modifierHeld = modifier === "none"
+			? !hasAnyModifier          // 无修饰键模式：按住任何修饰键时不触发
+			: (modifier === "ctrl" && (event.ctrlKey || event.metaKey))
+			|| (modifier === "shift" && event.shiftKey);
+
+		if (!modifierHeld) {
+			// 未按修饰键时，清除悬浮计时并触发离开逻辑
+			this.clearHoverShowTimer();
+			if (this.hoveredLinkKey !== null) {
+				this.hoveredLinkKey = null;
+				if (this.linkEditManager.isOpen()) {
+					this.scheduleHoverHide();
+				}
+			}
+			return;
+		}
 
 		this.processHover(event);
 	}
@@ -94,10 +114,11 @@ export class LinkInterceptor {
 			return;
 		}
 
-		const triggerMode = this.plugin.settings.triggerMode ?? "click";
+		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
+		const triggerModifier = this.plugin.settings.triggerModifier ?? "none";
 
 		// hover 模式下点击不拦截，保留默认行为
-		if (triggerMode === "hover") {
+		if (triggerMethod === "hover") {
 			return;
 		}
 
@@ -180,11 +201,12 @@ export class LinkInterceptor {
 			}
 		}
 
-		if (triggerMode === "ctrl-click") {
+		// 修饰键检查
+		if (triggerModifier === "ctrl") {
 			if (!(event.ctrlKey || event.metaKey)) {
 				return;
 			}
-		} else if (triggerMode === "shift-click") {
+		} else if (triggerModifier === "shift") {
 			if (!event.shiftKey) {
 				return;
 			}
@@ -193,7 +215,8 @@ export class LinkInterceptor {
 		event.preventDefault();
 		event.stopPropagation();
 
-		if (triggerMode === "click") {
+		// 无修饰键时，Ctrl+Click 直接打开链接
+		if (triggerModifier === "none") {
 			if (event.ctrlKey || event.metaKey) {
 				const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
 				await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);

@@ -62,7 +62,7 @@ export default class BetterLinksPlugin extends Plugin {
 			this.linkInterceptor.cancelHoverHide();
 		});
 		this.registerDomEvent(popoverRoot, "mouseleave", () => {
-			if ((this.settings.triggerMode ?? "click") === "hover") {
+			if ((this.settings.triggerMethod ?? "hover") === "hover") {
 				this.linkInterceptor.scheduleHoverHide();
 			}
 		});

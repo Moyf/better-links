@@ -2,8 +2,10 @@ export type ExternalLinkOpenMode = "browser" | "obsidian";
 export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 /** 选中 suggest 时别名的生成模式 */
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
-/** 触发编辑浮窗的方式 */
-export type TriggerMode = "click" | "ctrl-click" | "shift-click" | "hover";
+/** 触发编辑浮窗的交互方式 */
+export type TriggerMethod = "hover" | "click";
+/** 触发编辑浮窗时需要按住的修饰键 */
+export type TriggerModifier = "none" | "ctrl" | "shift";
 /** 排除特定链接的模式 */
 export type ExcludeMode = "disabled" | "hover" | "click" | "all";
 
@@ -31,8 +33,10 @@ export interface BetterLinksSettings {
     aliasTitleProperty?: string;
     /** 是否在浮窗中显示嵌入切换按钮（! 前缀切换） */
     showEmbedToggle?: boolean;
-    /** 触发编辑浮窗的方式 */
-    triggerMode?: TriggerMode;
+    /** 触发编辑浮窗的交互方式 */
+    triggerMethod?: TriggerMethod;
+    /** 触发编辑浮窗时需要按住的修饰键 */
+    triggerModifier?: TriggerModifier;
     /** 总是在编辑窗显示 displayText（含自动推导的默认值） */
     alwaysShowDisplayText?: boolean;
     /** 排除特定链接的模式（disabled = 不排除） */
@@ -57,7 +61,8 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     aliasSeparator: " > ",
     aliasTitleProperty: "title",
     showEmbedToggle: true,
-    triggerMode: "hover",
+    triggerMethod: "hover",
+    triggerModifier: "none",
     alwaysShowDisplayText: false,
     excludeMode: "disabled",
     excludeKeywords: ".base, .canvas",

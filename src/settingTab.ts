@@ -47,17 +47,32 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 
         behaviorGroup.addSetting((setting) => {
             setting
-                .setName(t("settingsTriggerModeName"))
-                .setDesc(t("settingsTriggerModeDesc"))
+                .setName(t("settingsTriggerMethodName"))
+                .setDesc(t("settingsTriggerMethodDesc"))
                 .addDropdown((dropdown) => {
                     dropdown
-                        .addOption("hover", t("settingsTriggerModeHover"))
-                        .addOption("click", t("settingsTriggerModeClick"))
-                        .addOption("ctrl-click", t("settingsTriggerModeCtrlClick"))
-                        .addOption("shift-click", t("settingsTriggerModeShiftClick"))
-                        .setValue(this.plugin.settings.triggerMode ?? "hover")
+                        .addOption("hover", t("settingsTriggerMethodHover"))
+                        .addOption("click", t("settingsTriggerMethodClick"))
+                        .setValue(this.plugin.settings.triggerMethod ?? "hover")
                         .onChange(async (value) => {
-                            this.plugin.settings.triggerMode = value as typeof this.plugin.settings.triggerMode;
+                            this.plugin.settings.triggerMethod = value as typeof this.plugin.settings.triggerMethod;
+                            await this.plugin.saveSettings();
+                        });
+                });
+        });
+
+        behaviorGroup.addSetting((setting) => {
+            setting
+                .setName(t("settingsTriggerModifierName"))
+                .setDesc(t("settingsTriggerModifierDesc"))
+                .addDropdown((dropdown) => {
+                    dropdown
+                        .addOption("none", t("settingsTriggerModifierNone"))
+                        .addOption("ctrl", t("settingsTriggerModifierCtrl"))
+                        .addOption("shift", t("settingsTriggerModifierShift"))
+                        .setValue(this.plugin.settings.triggerModifier ?? "none")
+                        .onChange(async (value) => {
+                            this.plugin.settings.triggerModifier = value as typeof this.plugin.settings.triggerModifier;
                             await this.plugin.saveSettings();
                         });
                 });
