@@ -3,6 +3,52 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.2.1] - 2026-03-31
+
+### English
+
+#### 🚀 Added
+
+- **Multiple trigger modes**: Added "Hover", "Ctrl+Click", and "Shift+Click" trigger modes. Default changed to **Hover** — the popover opens when your cursor rests on a link.
+- **Universal protocol support**: Links with custom protocols like `zotero://`, `file://`, etc. now open correctly through the system shell.
+- **"Always show DisplayText" setting** (off by default): When off, links without explicit display text (plain URLs, `[[notename]]`) will not have the display name pre-filled in the editor.
+- **Force save on validation failure**: When target validation fails, a ⚠️ warning icon appears inside the destination input and a ✓ button appears to force save, skipping validation.
+
+#### ✨ Improved
+
+- **Same-note heading suggestions**: When selecting a heading from the current note in the suggestion list, the link no longer includes the redundant note name.
+- **External → internal link format conversion**: When changing an external link destination to an internal path, the output format automatically follows Obsidian's "Use Wiki Links" setting.
+- **Popover fade-in animation**: The popover now appears with a 150ms opacity transition.
+- **User interaction protection**: The popover will not auto-close when the mouse leaves while an input is focused or the suggestion dropdown is open.
+
+#### 🐛 Fixed
+
+- Fixed: Plain URLs inside inline code (e.g. `` `www.a.com` ``) are no longer detected as editable links.
+- Fixed: Double tooltip on popover buttons (removed redundant `title` attribute).
+- Fixed: Clearing display text on a Markdown link produced `[](url)` instead of a plain URL.
+
+### 中文
+
+#### 🚀 新增
+
+- **多种触发方式**：新增「悬浮」「Ctrl+点击」「Shift+点击」三种触发方式，默认改为**悬浮触发**——鼠标停留在链接上即弹出编辑窗口。
+- **通用协议支持**：`zotero://`、`file://` 等任意自定义协议链接均可正确通过系统打开。
+- **新增「总是显示 DisplayText」设置**（默认关闭）：关闭时，纯 URL 或 `[[笔记名]]` 等没有显式显示文本的链接，编辑窗中不会预先填入显示名称。
+- **校验失败强制保存**：目标校验失败时，输入框内右侧浮动显示 ⚠️ 警告图标，出现 ✓ 按钮可跳过校验强制保存。
+
+#### ✨ 优化
+
+- **当前笔记标题建议优化**：链接建议中选中当前笔记的标题时，不再生成额外的笔记名称。
+- **外部→内部链接格式自动转换**：将外部链接目标改为内部路径时，自动根据 Obsidian「使用 Wiki 链接」设置选择输出格式。
+- **编辑窗渐入动画**：popover 以 150ms 不透明度过渡显示。
+- **用户交互保护**：输入框获焦或建议下拉列表打开时，鼠标移出不会触发弹窗自动关闭。
+
+#### 🐛 修复
+
+- 修复：内联代码中的纯 URL（如 `` `www.a.com` ``）不再被识别为可编辑链接。
+- 修复：编辑窗按钮的双层 tooltip 问题（移除冗余的 `title` 属性）。
+- 修复：Markdown 链接 display text 清空后保存为 `[](url)` 的问题，现在正确退化为纯 URL。
+
 ## [1.1.0] - 2026-03-19
 
 ### Link suggestion
