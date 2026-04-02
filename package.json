@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-better-links",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"description": "Better Links - Enhanced link editing for Obsidian with floating editor popover",
 	"main": "dist/main.js",
 	"type": "module",

@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.2.2] - 2026-04-02
+
+### English
+
+#### 🚀 Added
+
+- **Right-click trigger mode**: Added a new "Right click" option in trigger method settings to open the popover via context menu interaction.
+- **Alt modifier option**: Added `Alt` as a trigger modifier key option alongside None/Ctrl/Shift.
+
+#### 🐛 Fixed
+
+- **Right-click popover anchor stability**: Reworked right-click positioning to use an editor-range virtual reference, preventing the popover from jumping to the top-left corner after editor scroll.
+- **Popover follow behavior on scroll/resize**: Added throttled Popper updates while the popover is open so right-click mode follows viewport/editor movement consistently.
+
+### 中文
+
+#### 🚀 新增
+
+- **右键触发方式**：在触发方式设置中新增「右键」选项，可通过右键打开编辑浮窗。
+- **新增 Alt 修饰键**：触发修饰键新增 `Alt` 选项，与 无/Ctrl/Shift 并列。
+
+#### 🐛 修复
+
+- **右键定位稳定性**：右键模式改为基于编辑器范围的虚拟锚点定位，修复编辑区滚动后弹窗跑到左上角的问题。
+- **滚动/缩放跟随**：弹窗打开期间为滚动与窗口尺寸变化增加节流更新，右键模式下弹窗可稳定跟随视图变化。
+
 ## [1.2.1] - 2026-03-31
 
 ### English
