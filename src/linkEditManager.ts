@@ -1,4 +1,5 @@
 import { MarkdownView, Notice } from "obsidian";
+import type { VirtualElement } from "@popperjs/core";
 import type BetterLinksPlugin from "./main";
 import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink, shouldUseWikiLinkFormat } from "./linkActions";
 import { isLikelyExternalDestination, isLikelyInternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
@@ -7,7 +8,6 @@ import { LinkDestinationSuggest } from "./linkSuggest";
 
 interface ActiveSession {
 	match: EditorLinkMatch;
-	referenceEl: HTMLElement;
 }
 
 export class LinkEditManager {
@@ -97,11 +97,11 @@ export class LinkEditManager {
 		return this.popoverEditor.hasInputFocus() || this.suggest.isActive;
 	}
 
-	show(match: EditorLinkMatch, referenceEl: HTMLElement): void {
+	show(match: EditorLinkMatch, referenceEl: HTMLElement | VirtualElement, interactionEl?: HTMLElement): void {
 		this.cancelPendingValidation();
 		this.suggest.close();
 		this.destinationInvalid = false;
-		this.activeSession = { match, referenceEl };
+		this.activeSession = { match };
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
 		const isEmbedded = match.originalText.startsWith("!");
@@ -127,7 +127,7 @@ export class LinkEditManager {
 			showEmbedToggle,
 			isEmbedded,
 			showCtrlClickHint,
-		});
+		}, interactionEl);
 
 		// 只对 wiki / markdown 非图片链接更新 suggest 上下文
 		const shouldSuggest =

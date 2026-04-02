@@ -53,6 +53,7 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                     dropdown
                         .addOption("hover", t("settingsTriggerMethodHover"))
                         .addOption("click", t("settingsTriggerMethodClick"))
+                        .addOption("right-click", t("settingsTriggerMethodRightClick"))
                         .setValue(this.plugin.settings.triggerMethod ?? "hover")
                         .onChange(async (value) => {
                             this.plugin.settings.triggerMethod = value as typeof this.plugin.settings.triggerMethod;
@@ -70,6 +71,7 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                         .addOption("none", t("settingsTriggerModifierNone"))
                         .addOption("ctrl", t("settingsTriggerModifierCtrl"))
                         .addOption("shift", t("settingsTriggerModifierShift"))
+                        .addOption("alt", t("settingsTriggerModifierAlt"))
                         .setValue(this.plugin.settings.triggerModifier ?? "none")
                         .onChange(async (value) => {
                             this.plugin.settings.triggerModifier = value as typeof this.plugin.settings.triggerModifier;

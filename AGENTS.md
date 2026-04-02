@@ -59,6 +59,7 @@ Usage notes:
 
 ## Core Policies
 - **CRITICAL**: Never perform automatic git operations. AI agents must not execute `git commit`, `git push`, or any command that automatically stages or commits changes without explicit user approval.
+- **Build Verification**: Always use `pnpm build:local` for build verification unless the user explicitly requests another command.
 
 ## Terminology
 - Use **"properties"** when referring to YAML metadata at the top of Markdown files.

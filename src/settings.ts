@@ -3,9 +3,9 @@ export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 /** 选中 suggest 时别名的生成模式 */
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
 /** 触发编辑浮窗的交互方式 */
-export type TriggerMethod = "hover" | "click";
+export type TriggerMethod = "hover" | "click" | "right-click";
 /** 触发编辑浮窗时需要按住的修饰键 */
-export type TriggerModifier = "none" | "ctrl" | "shift";
+export type TriggerModifier = "none" | "ctrl" | "shift" | "alt";
 /** 排除特定链接的模式 */
 export type ExcludeMode = "disabled" | "hover" | "click" | "all";
 

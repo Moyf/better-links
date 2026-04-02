@@ -50,6 +50,15 @@ export default class BetterLinksPlugin extends Plugin {
 
 		this.registerDomEvent(
 			document,
+			"contextmenu",
+			(event: MouseEvent) => {
+				void this.linkInterceptor.handleContextMenu(event);
+			},
+			{ capture: true }
+		);
+
+		this.registerDomEvent(
+			document,
 			"mousemove",
 			(event: MouseEvent) => {
 				this.linkInterceptor.handleMouseMove(event);

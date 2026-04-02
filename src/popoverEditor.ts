@@ -1,4 +1,4 @@
-import { createPopper, type Instance } from "@popperjs/core";
+import { createPopper, type Instance, type VirtualElement } from "@popperjs/core";
 import { setIcon } from "obsidian";
 import type { I18nKey } from "./i18n";
 
@@ -51,6 +51,9 @@ export class PopoverEditor {
 	private popperInstance: Instance | null = null;
 	private outsidePointerDownHandler: ((event: PointerEvent) => void) | null = null;
 	private keydownHandler: ((event: KeyboardEvent) => void) | null = null;
+	private scrollHandler: (() => void) | null = null;
+	private resizeHandler: (() => void) | null = null;
+	private updateRafId: number | null = null;
 	private isSuggestActiveChecker: (() => boolean) | null = null;
 
 	constructor(
@@ -178,7 +181,7 @@ export class PopoverEditor {
 		return this.wrapperEl;
 	}
 
-	open(referenceEl: HTMLElement, state: PopoverEditorState): void {
+	open(referenceEl: HTMLElement | VirtualElement, state: PopoverEditorState, interactionEl?: HTMLElement): void {
 		this.typeBadgeEl.setText(state.typeLabel);
 		this.displayInputEl.value = state.displayText;
 		this.destinationInputEl.value = state.destination;
@@ -229,7 +232,7 @@ export class PopoverEditor {
 			});
 		});
 
-		this.attachGlobalListeners(referenceEl);
+		this.attachGlobalListeners(interactionEl);
 		window.setTimeout(() => {
 			this.displayInputEl.focus();
 			this.displayInputEl.select();
@@ -265,13 +268,13 @@ export class PopoverEditor {
 		return btn;
 	}
 
-	private attachGlobalListeners(referenceEl: HTMLElement): void {
+	private attachGlobalListeners(interactionEl?: HTMLElement): void {
 		this.detachGlobalListeners();
 
 		this.outsidePointerDownHandler = (event: PointerEvent) => {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (this.wrapperEl.contains(target) || referenceEl.contains(target)) return;
+			if (this.wrapperEl.contains(target) || interactionEl?.contains(target)) return;
 			// Suggest dropdown (Obsidian挂在 body 上的 .suggestion-container) 里的点击不关闭 popover
 			if (this.isSuggestActiveChecker?.() && (target as Element).closest?.(".suggestion-container")) return;
 			this.events.onClose();
@@ -292,8 +295,18 @@ export class PopoverEditor {
 			}
 		};
 
+		this.scrollHandler = () => {
+			this.schedulePopperUpdate();
+		};
+
+		this.resizeHandler = () => {
+			this.schedulePopperUpdate();
+		};
+
 		document.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
 		document.addEventListener("keydown", this.keydownHandler, true);
+		document.addEventListener("scroll", this.scrollHandler, true);
+		window.addEventListener("resize", this.resizeHandler, true);
 	}
 
 	private detachGlobalListeners(): void {
@@ -305,5 +318,25 @@ export class PopoverEditor {
 			document.removeEventListener("keydown", this.keydownHandler, true);
 			this.keydownHandler = null;
 		}
+		if (this.scrollHandler) {
+			document.removeEventListener("scroll", this.scrollHandler, true);
+			this.scrollHandler = null;
+		}
+		if (this.resizeHandler) {
+			window.removeEventListener("resize", this.resizeHandler, true);
+			this.resizeHandler = null;
+		}
+		if (this.updateRafId !== null) {
+			cancelAnimationFrame(this.updateRafId);
+			this.updateRafId = null;
+		}
+	}
+
+	private schedulePopperUpdate(): void {
+		if (!this.popperInstance || this.updateRafId !== null) return;
+		this.updateRafId = requestAnimationFrame(() => {
+			this.updateRafId = null;
+			void this.popperInstance?.update();
+		});
 	}
 }

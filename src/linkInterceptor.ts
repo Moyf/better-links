@@ -1,4 +1,5 @@
 import { EditorView } from "@codemirror/view";
+import type { VirtualElement } from "@popperjs/core";
 import { MarkdownView, Notice } from "obsidian";
 import type BetterLinksPlugin from "./main";
 import { findLinkAtOffset, findLinkByDestination, withEditorRange, type EditorLinkMatch } from "./linkDetector";
@@ -46,7 +47,11 @@ export class LinkInterceptor {
 	) {}
 
 	handleClick(event: MouseEvent): Promise<void> {
-		return this.handleClickEvent(event);
+		return this.handlePointerTriggerEvent(event, "click");
+	}
+
+	handleContextMenu(event: MouseEvent): Promise<void> {
+		return this.handlePointerTriggerEvent(event, "contextmenu");
 	}
 
 	handleMouseMove(event: MouseEvent): void {
@@ -56,11 +61,12 @@ export class LinkInterceptor {
 
 		// 修饰键检查
 		const modifier = this.plugin.settings.triggerModifier ?? "none";
-		const hasAnyModifier = event.ctrlKey || event.metaKey || event.shiftKey;
+		const hasAnyModifier = event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
 		const modifierHeld = modifier === "none"
 			? !hasAnyModifier          // 无修饰键模式：按住任何修饰键时不触发
 			: (modifier === "ctrl" && (event.ctrlKey || event.metaKey))
-			|| (modifier === "shift" && event.shiftKey);
+			|| (modifier === "shift" && event.shiftKey)
+			|| (modifier === "alt" && event.altKey);
 
 		if (!modifierHeld) {
 			// 未按修饰键时，清除悬浮计时并触发离开逻辑
@@ -109,16 +115,24 @@ export class LinkInterceptor {
 		this.clearHoverHideTimer();
 	}
 
-	private async handleClickEvent(event: MouseEvent): Promise<void> {
-		if (!this.plugin.settings.enabled || event.button !== 0 || event.defaultPrevented) {
+	private async handlePointerTriggerEvent(event: MouseEvent, eventType: "click" | "contextmenu"): Promise<void> {
+		if (!this.plugin.settings.enabled || event.defaultPrevented) {
 			return;
 		}
 
 		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
 		const triggerModifier = this.plugin.settings.triggerModifier ?? "none";
 
-		// hover 模式下点击不拦截，保留默认行为
+		// hover 模式下不拦截，保留默认行为
 		if (triggerMethod === "hover") {
+			return;
+		}
+		if (triggerMethod === "click") {
+			if (eventType !== "click" || event.button !== 0) {
+				return;
+			}
+		}
+		if (triggerMethod === "right-click" && eventType !== "contextmenu") {
 			return;
 		}
 
@@ -182,19 +196,24 @@ export class LinkInterceptor {
 				if (!(event.ctrlKey || event.metaKey)) return;
 			} else if (triggerModifier === "shift") {
 				if (!event.shiftKey) return;
+			} else if (triggerModifier === "alt") {
+				if (!event.altKey) return;
 			}
 
 			event.preventDefault();
 			event.stopPropagation();
 
-			// 无修饰键时，Ctrl+Click 直接打开链接
-			if (triggerModifier === "none" && (event.ctrlKey || event.metaKey)) {
+			// click + 无修饰键时，Ctrl+Click 直接打开链接
+			if (triggerMethod === "click" && triggerModifier === "none" && (event.ctrlKey || event.metaKey)) {
 				const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
 				await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);
 				return;
 			}
 
-			this.linkEditManager.show(editorMatch, anchorEl);
+			const referenceEl = triggerMethod === "right-click"
+				? this.createVirtualReferenceForRange(editorView, editorMatch.range.from.line, editorMatch.range.from.ch, editorMatch.range.to.ch)
+				: anchorEl;
+			this.linkEditManager.show(editorMatch, referenceEl, anchorEl);
 			return;
 		}
 
@@ -241,13 +260,17 @@ export class LinkInterceptor {
 			if (!event.shiftKey) {
 				return;
 			}
+		} else if (triggerModifier === "alt") {
+			if (!event.altKey) {
+				return;
+			}
 		}
 
 		event.preventDefault();
 		event.stopPropagation();
 
-		// 无修饰键时，Ctrl+Click 直接打开链接
-		if (triggerModifier === "none") {
+		// click + 无修饰键时，Ctrl+Click 直接打开链接
+		if (triggerMethod === "click" && triggerModifier === "none") {
 			if (event.ctrlKey || event.metaKey) {
 				const values = normalizeEditableValues(editorMatch, editorMatch.displayText, editorMatch.destination);
 				await openLink(this.plugin.app, editorMatch, values, this.plugin.settings);
@@ -260,7 +283,38 @@ export class LinkInterceptor {
 			return;
 		}
 
-		this.linkEditManager.show(editorMatch, target);
+		const referenceEl = triggerMethod === "right-click"
+			? this.createVirtualReference(matchStartOffset, lineStartOffset + match.end, editorView)
+			: this.resolveReferenceElement(event, target, markdownView);
+		this.linkEditManager.show(editorMatch, referenceEl, target);
+	}
+
+	private resolveReferenceElement(event: MouseEvent, fallback: HTMLElement, markdownView: MarkdownView): HTMLElement {
+		const pointEl = document.elementFromPoint(event.clientX, event.clientY);
+		if (pointEl instanceof HTMLElement && markdownView.containerEl.contains(pointEl)) {
+			return pointEl;
+		}
+		return fallback;
+	}
+
+	private createVirtualReferenceForRange(editorView: EditorView, line: number, fromCh: number, toCh: number): VirtualElement {
+		const lineFrom = editorView.state.doc.line(line + 1).from;
+		return this.createVirtualReference(lineFrom + fromCh, lineFrom + toCh, editorView);
+	}
+
+	private createVirtualReference(from: number, to: number, editorView: EditorView): VirtualElement {
+		let lastRect = new DOMRect(0, 0, 1, 1);
+		return {
+			contextElement: editorView.dom,
+			getBoundingClientRect: () => {
+				const start = editorView.coordsAtPos(from);
+				const end = editorView.coordsAtPos(to);
+				if (start && end) {
+					lastRect = new DOMRect(start.left, start.top, Math.max(1, end.right - start.left), Math.max(1, start.bottom - start.top));
+				}
+				return lastRect;
+			},
+		};
 	}
 
 	// ── hover 逻辑 ──────────────────────────────────────────────────────────
