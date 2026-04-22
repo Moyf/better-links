@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.3.0-beta.2] - 2026-04-22 (Pre Release)
+
+### English
+
+#### 🐛 Fixed
+
+- **Mobile touch interception**: Fixed `pointerdown` capture not working on touch devices. Touch events report `event.button === -1`, which was incorrectly filtered out. Changed filter to `button > 0` so only right/middle clicks are excluded. Also added a coordinate fallback using the target element's center when `clientX/Y` is 0 (a known quirk in some mobile WebViews).
+
+### 中文
+
+#### 🐛 修复
+
+- **移动端触屏拦截**：修复触屏事件无法被 `pointerdown` capture 拦截的问题。触屏事件的 `event.button` 为 `-1`，之前的 `!== 0` 判断将其全部过滤。现改为 `> 0`，仅排除右键/中键。同时对部分移动端 WebView 中 `clientX/Y` 为 0 的情况，增加了以 target 元素中心坐标作为 fallback。
+
 ## [1.3.0-beta.1] - 2026-04-22 (Pre Release)
 
 ### English
