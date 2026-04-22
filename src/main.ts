@@ -50,6 +50,15 @@ export default class BetterLinksPlugin extends Plugin {
 
 		this.registerDomEvent(
 			document,
+			"pointerdown",
+			(event: PointerEvent) => {
+				this.linkInterceptor.handlePointerDown(event);
+			},
+			{ capture: true }
+		);
+
+		this.registerDomEvent(
+			document,
 			"contextmenu",
 			(event: MouseEvent) => {
 				void this.linkInterceptor.handleContextMenu(event);

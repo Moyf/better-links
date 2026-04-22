@@ -39,6 +39,8 @@ export interface BetterLinksSettings {
     triggerModifier?: TriggerModifier;
     /** 总是在编辑窗显示 displayText（含自动推导的默认值） */
     alwaysShowDisplayText?: boolean;
+    /** 非 click 触发模式下，是否禁用左键点击链接的原生跳转行为 */
+    disableNativeClick?: boolean;
     /** 排除特定链接的模式（disabled = 不排除） */
     excludeMode?: ExcludeMode;
     /** 排除关键字列表，逗号或换行分隔 */
@@ -64,6 +66,7 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     triggerMethod: "hover",
     triggerModifier: "none",
     alwaysShowDisplayText: false,
+    disableNativeClick: false,
     excludeMode: "disabled",
     excludeKeywords: ".base, .canvas",
 };

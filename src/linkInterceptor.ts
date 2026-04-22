@@ -40,18 +40,67 @@ export class LinkInterceptor {
 	private hoverHideTimer: ReturnType<typeof setTimeout> | null = null;
 	/** hover 模式：当前悬停链接的序列化 key（用于判断是否同一个链接） */
 	private hoveredLinkKey: string | null = null;
+	/** pointerdown 拦截成功标记，用于让后续 click 事件配合 preventDefault */
+	private pointerDownIntercepted = false;
 
 	constructor(
 		private readonly plugin: BetterLinksPlugin,
 		private readonly linkEditManager: LinkEditManager,
 	) {}
 
+	/**
+	 * pointerdown capture：在移动端 Obsidian 处理链接跳转之前抢先拦截。
+	 * 仅在 click 触发模式下生效——标记此次交互已被插件接管，
+	 * 后续 click 事件中根据标记完成打开 popover 的实际逻辑。
+	 */
+	handlePointerDown(event: PointerEvent): void {
+		this.pointerDownIntercepted = false;
+
+		if (!this.plugin.settings.enabled) return;
+		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
+		if (triggerMethod !== "click") return;
+		if (event.button !== 0) return;
+
+		// disableNativeClick 的裸左键拦截也需要在 pointerdown 阶段处理
+		// （否则移动端 Obsidian 会在 click 之前就完成跳转）
+
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return;
+		if (target.matches("img") || target.closest("img") || target.closest(".image-embed")) return;
+
+		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdownView?.file || !markdownView.containerEl.contains(target)) return;
+
+		const cmEditorEl = target.closest(".cm-editor");
+		if (!(cmEditorEl instanceof HTMLElement)) return;
+
+		const editorView = EditorView.findFromDOM(cmEditorEl);
+		if (!editorView) return;
+
+		const documentOffset = editorView.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+		if (documentOffset == null) return;
+
+		const position = markdownView.editor.offsetToPos(documentOffset);
+		const lineText = markdownView.editor.getLine(position.line);
+		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
+		if (!match) return;
+
+		// 确认点在链接上 → 抢先 prevent，阻止 Obsidian 原生跳转
+		event.preventDefault();
+		event.stopPropagation();
+		this.pointerDownIntercepted = true;
+	}
+
 	handleClick(event: MouseEvent): Promise<void> {
-		return this.handlePointerTriggerEvent(event, "click");
+		// 如果 pointerdown 已抢先拦截，click 事件的 defaultPrevented 可能为 true，
+		// 需要跳过 defaultPrevented 检查，让后续逻辑正常执行
+		const skipDefaultPreventedCheck = this.pointerDownIntercepted;
+		this.pointerDownIntercepted = false;
+		return this.handlePointerTriggerEvent(event, "click", skipDefaultPreventedCheck);
 	}
 
 	handleContextMenu(event: MouseEvent): Promise<void> {
-		return this.handlePointerTriggerEvent(event, "contextmenu");
+		return this.handlePointerTriggerEvent(event, "contextmenu", false);
 	}
 
 	handleMouseMove(event: MouseEvent): void {
@@ -115,13 +164,33 @@ export class LinkInterceptor {
 		this.clearHoverHideTimer();
 	}
 
-	private async handlePointerTriggerEvent(event: MouseEvent, eventType: "click" | "contextmenu"): Promise<void> {
-		if (!this.plugin.settings.enabled || event.defaultPrevented) {
+	private async handlePointerTriggerEvent(event: MouseEvent, eventType: "click" | "contextmenu", skipDefaultPreventedCheck: boolean): Promise<void> {
+		if (!this.plugin.settings.enabled) {
+			return;
+		}
+		if (!skipDefaultPreventedCheck && event.defaultPrevented) {
 			return;
 		}
 
 		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
 		const triggerModifier = this.plugin.settings.triggerModifier ?? "none";
+
+		// ── 禁用左键原生点击 ──
+		// 非 click 模式 + 启用了 disableNativeClick + 左键无修饰键 → 吞掉事件
+		if (
+			eventType === "click"
+			&& event.button === 0
+			&& triggerMethod !== "click"
+			&& (this.plugin.settings.disableNativeClick ?? false)
+			&& !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey
+		) {
+			// 确认点击目标确实在编辑器链接上，才拦截
+			if (this.isClickOnEditorLink(event)) {
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			}
+		}
 
 		// hover 模式下不拦截，保留默认行为
 		if (triggerMethod === "hover") {
@@ -295,6 +364,31 @@ export class LinkInterceptor {
 			return pointEl;
 		}
 		return fallback;
+	}
+
+	/**
+	 * 快速判断点击事件是否落在编辑器内的链接上。
+	 * 用于 disableNativeClick 拦截：只吞掉"点在链接上"的裸左键，不影响其他位置。
+	 */
+	private isClickOnEditorLink(event: MouseEvent): boolean {
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return false;
+
+		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdownView?.file || !markdownView.containerEl.contains(target)) return false;
+
+		const cmEditorEl = target.closest(".cm-editor");
+		if (!(cmEditorEl instanceof HTMLElement)) return false;
+
+		const editorView = EditorView.findFromDOM(cmEditorEl);
+		if (!editorView) return false;
+
+		const documentOffset = editorView.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+		if (documentOffset == null) return false;
+
+		const position = markdownView.editor.offsetToPos(documentOffset);
+		const lineText = markdownView.editor.getLine(position.line);
+		return !!findLinkAtOffset(lineText, position.ch, this.plugin.settings);
 	}
 
 	private createVirtualReferenceForRange(editorView: EditorView, line: number, fromCh: number, toCh: number): VirtualElement {

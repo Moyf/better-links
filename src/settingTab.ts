@@ -58,9 +58,30 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                         .onChange(async (value) => {
                             this.plugin.settings.triggerMethod = value as typeof this.plugin.settings.triggerMethod;
                             await this.plugin.saveSettings();
+                            updateDisableNativeClickVisibility();
                         });
                 });
         });
+
+        let disableNativeClickEl: HTMLElement | null = null;
+        const updateDisableNativeClickVisibility = () => {
+            const isClickMode = (this.plugin.settings.triggerMethod ?? "hover") === "click";
+            disableNativeClickEl?.toggleClass("is-hidden", isClickMode);
+        };
+
+        behaviorGroup.addSetting((setting) => {
+            disableNativeClickEl = setting.settingEl;
+            setting
+                .setName(t("settingsDisableNativeClickName"))
+                .setDesc(t("settingsDisableNativeClickDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.disableNativeClick ?? false).onChange(async (value) => {
+                        this.plugin.settings.disableNativeClick = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+        updateDisableNativeClickVisibility();
 
         behaviorGroup.addSetting((setting) => {
             setting
