@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.3.0-beta.1] - 2026-04-22 (Pre Release)
+
+### English
+
+#### 🚀 Added
+
+- **Disable native click option**: When the trigger method is not "Click", a new toggle lets you suppress the default left-click link navigation. Only bare left-clicks on links are blocked — Ctrl+Click and other modified clicks still work as usual.
+
+#### 🐛 Fixed
+
+- **Mobile click mode**: Fixed touch-tap on links not opening the popover on mobile. The plugin now intercepts `pointerdown` in capture phase before Obsidian processes the native link jump, so the click trigger works correctly on touch devices.
+
+### 中文
+
+#### 🚀 新增
+
+- **禁用左键原生点击**：当触发方式非「点击」时，新增开关可屏蔽左键点击链接的默认跳转行为，仅移动光标。Ctrl+Click 等带修饰键的点击不受影响。
+
+#### 🐛 修复
+
+- **移动端点击模式**：修复移动端触屏点击链接时编辑浮窗无法弹出的问题。插件现在在 `pointerdown` capture 阶段抢先拦截，使点击触发在触屏设备上正常工作。
+
 ## [1.2.2] - 2026-04-02
 
 ### English
