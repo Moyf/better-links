@@ -59,7 +59,9 @@ export class LinkInterceptor {
 		if (!this.plugin.settings.enabled) return;
 		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
 		if (triggerMethod !== "click") return;
-		if (event.button !== 0) return;
+		// 移动端触屏 event.button 可能为 -1，用 pointerType 区分触屏与右键
+		// 只处理 mouse 左键（button === 0）和 touch（button === -1 或 0）
+		if (event.button > 0) return;
 
 		// disableNativeClick 的裸左键拦截也需要在 pointerdown 阶段处理
 		// （否则移动端 Obsidian 会在 click 之前就完成跳转）
@@ -77,7 +79,12 @@ export class LinkInterceptor {
 		const editorView = EditorView.findFromDOM(cmEditorEl);
 		if (!editorView) return;
 
-		const documentOffset = editorView.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+		// 移动端触屏：优先用 target 元素的中心坐标做 fallback，
+		// 避免 clientX/Y 在 pointerdown 时精度不足
+		const x = event.clientX || (target.getBoundingClientRect().left + target.getBoundingClientRect().width / 2);
+		const y = event.clientY || (target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2);
+
+		const documentOffset = editorView.posAtCoords({ x, y }, false);
 		if (documentOffset == null) return;
 
 		const position = markdownView.editor.offsetToPos(documentOffset);
