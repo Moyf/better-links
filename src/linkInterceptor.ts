@@ -93,19 +93,14 @@ export class LinkInterceptor {
 		if (!match) return;
 
 		// edgeProtection：验证鼠标坐标是否真的在链接可视区域内
-		// 与 handlePointerTriggerEvent 中的逻辑一致，避免点击行尾空白时误拦截
+		// 支持跨行（软换行）链接：首行检查左边界，末行检查右边界，中间行不检查 X 轴
 		if (this.plugin.settings.edgeProtection ?? true) {
 			const lineStartOffset = editorView.state.doc.line(position.line + 1).from;
 			const matchStartOffset = lineStartOffset + match.start;
 			const matchStart = editorView.coordsAtPos(matchStartOffset);
 			const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
 			if (matchStart && matchEnd) {
-				const LEFT_BUFFER = 4;
-				const RIGHT_BUFFER = 4;
-				if (Math.abs(documentOffset - matchStartOffset) <= LEFT_BUFFER && x <= matchStart.left + LEFT_BUFFER) return;
-				if (Math.abs(documentOffset - (lineStartOffset + match.end)) <= RIGHT_BUFFER && x >= matchEnd.right - RIGHT_BUFFER) return;
-				if (y < matchStart.top || y > matchStart.bottom) return;
-				if (x > matchEnd.right) return;
+				if (!this.isPointInsideLinkRect(x, y, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd)) return;
 			}
 		}
 
@@ -328,18 +323,7 @@ export class LinkInterceptor {
 		const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
 
 		if ((this.plugin.settings.edgeProtection ?? true) && matchStart && matchEnd) {
-			const LEFT_BUFFER = 4;
-            const RIGHT_BUFFER = 4;
-			if (Math.abs(documentOffset - matchStartOffset) <= LEFT_BUFFER && event.clientX <= matchStart.left + LEFT_BUFFER) {
-				return;
-			}
-            if (Math.abs(documentOffset - (lineStartOffset + match.end)) <= RIGHT_BUFFER && event.clientX >= matchEnd.right - RIGHT_BUFFER) {
-                return;
-            }
-			if (event.clientY < matchStart.top || event.clientY > matchStart.bottom) {
-				return;
-			}
-			if (event.clientX > matchEnd.right) {
+			if (!this.isPointInsideLinkRect(event.clientX, event.clientY, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd)) {
 				return;
 			}
 		}
@@ -388,6 +372,54 @@ export class LinkInterceptor {
 			return pointEl;
 		}
 		return fallback;
+	}
+
+	/**
+	 * 判断点 (x, y) 是否在链接的可视矩形内。
+	 * 支持跨行（软换行）链接：
+	 * - 单行链接：检查左/右/上/下边界
+	 * - 跨行链接：首行检查左边界，末行检查右边界，中间行整行命中
+	 */
+	private isPointInsideLinkRect(
+		x: number, y: number,
+		documentOffset: number,
+		matchStartOffset: number, matchEndOffset: number,
+		matchStart: { top: number; bottom: number; left: number; right: number },
+		matchEnd: { top: number; bottom: number; left: number; right: number },
+	): boolean {
+		const BUFFER = 4;
+
+		// Y 轴：超出整个链接的垂直范围则不命中
+		if (y < matchStart.top || y > matchEnd.bottom) return false;
+
+		const isMultiLine = matchEnd.top > matchStart.bottom;
+
+		if (!isMultiLine) {
+			// 单行：沿用原有逻辑
+			if (Math.abs(documentOffset - matchStartOffset) <= BUFFER && x <= matchStart.left + BUFFER) return false;
+			if (Math.abs(documentOffset - matchEndOffset) <= BUFFER && x >= matchEnd.right - BUFFER) return false;
+			if (x > matchEnd.right) return false;
+			return true;
+		}
+
+		// 跨行链接
+		const onFirstLine = y <= matchStart.bottom;
+		const onLastLine = y >= matchEnd.top;
+
+		if (onFirstLine) {
+			// 首行：只检查左边界（右侧延伸到行尾）
+			if (Math.abs(documentOffset - matchStartOffset) <= BUFFER && x <= matchStart.left + BUFFER) return false;
+			return true;
+		}
+		if (onLastLine) {
+			// 末行：只检查右边界（左侧从行首开始）
+			if (Math.abs(documentOffset - matchEndOffset) <= BUFFER && x >= matchEnd.right - BUFFER) return false;
+			if (x > matchEnd.right) return false;
+			return true;
+		}
+
+		// 中间行：整行都是链接内容，不检查 X 轴
+		return true;
 	}
 
 	/**
