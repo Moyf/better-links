@@ -92,6 +92,23 @@ export class LinkInterceptor {
 		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
 		if (!match) return;
 
+		// edgeProtection：验证鼠标坐标是否真的在链接可视区域内
+		// 与 handlePointerTriggerEvent 中的逻辑一致，避免点击行尾空白时误拦截
+		if (this.plugin.settings.edgeProtection ?? true) {
+			const lineStartOffset = editorView.state.doc.line(position.line + 1).from;
+			const matchStartOffset = lineStartOffset + match.start;
+			const matchStart = editorView.coordsAtPos(matchStartOffset);
+			const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
+			if (matchStart && matchEnd) {
+				const LEFT_BUFFER = 4;
+				const RIGHT_BUFFER = 4;
+				if (Math.abs(documentOffset - matchStartOffset) <= LEFT_BUFFER && x <= matchStart.left + LEFT_BUFFER) return;
+				if (Math.abs(documentOffset - (lineStartOffset + match.end)) <= RIGHT_BUFFER && x >= matchEnd.right - RIGHT_BUFFER) return;
+				if (y < matchStart.top || y > matchStart.bottom) return;
+				if (x > matchEnd.right) return;
+			}
+		}
+
 		// 确认点在链接上 → 抢先 prevent，阻止 Obsidian 原生跳转
 		event.preventDefault();
 		event.stopPropagation();
