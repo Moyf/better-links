@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.4.0] - 2026-04-27
+
+### English
+
+#### 🚀 Added
+
+- **Internal link open mode**: New setting "Open internal links in" below the existing external link option. Choose where to open internal links via the popover's "Open link" button: new tab (default), new window, split left & right, or split top & bottom.
+- **Smart split**: When a split mode is selected, an additional toggle (enabled by default) reuses an existing pane in the same direction instead of creating yet another split.
+
+### 中文
+
+#### 🚀 新增
+
+- **内部链接打开方式**：在「外部链接打开方式」设置下方新增「内部链接打开方式」选项。可选择通过浮窗「打开链接」按钮打开内部链接时的位置：新标签页（默认）、新窗口、左右分屏、上下分屏。
+- **智能分屏**：选择分屏模式时额外显示的开关（默认开启），已有同方向分屏时复用另一个面板而非再新建分屏。
+
 ## [1.3.0-beta.2] - 2026-04-22 (Pre Release)
 
 ### English
