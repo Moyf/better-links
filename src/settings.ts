@@ -1,4 +1,5 @@
 export type ExternalLinkOpenMode = "browser" | "obsidian";
+export type InternalLinkOpenMode = "tab" | "window" | "split-horizontal" | "split-vertical";
 export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 /** 选中 suggest 时别名的生成模式 */
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
@@ -45,6 +46,10 @@ export interface BetterLinksSettings {
     excludeMode?: ExcludeMode;
     /** 排除关键字列表，逗号或换行分隔 */
     excludeKeywords?: string;
+    /** 内部链接打开方式 */
+    internalLinkOpenMode?: InternalLinkOpenMode;
+    /** 智能分屏：已有同方向分屏时复用已有 leaf，而非再新建 */
+    smartSplit?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -69,4 +74,6 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     disableNativeClick: false,
     excludeMode: "disabled",
     excludeKeywords: ".base, .canvas",
+    internalLinkOpenMode: "tab",
+    smartSplit: true,
 };

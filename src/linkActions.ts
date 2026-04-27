@@ -1,7 +1,7 @@
-import { Notice, type App } from "obsidian";
+import { Notice, type App, type WorkspaceLeaf } from "obsidian";
 import { defaultDisplayText, deletionReplacement, isLikelyExternalDestination, isLikelyInternalDestination, toMarkdownSnippet, type EditorLinkMatch } from "./linkDetector";
 import { createTranslator } from "./i18n";
-import type { BetterLinksSettings } from "./settings";
+import type { BetterLinksSettings, InternalLinkOpenMode } from "./settings";
 
 interface ElectronModule {
 	clipboard?: {
@@ -28,7 +28,14 @@ export async function openLink(app: App, match: EditorLinkMatch, values: Editabl
 	}
 
 	if (match.type === "wiki" || isLikelyInternalDestination(destination)) {
-		await app.workspace.openLinkText(destination, match.sourcePath, false);
+		const mode = settings.internalLinkOpenMode ?? "tab";
+		if (mode === "tab") {
+			// 默认行为：新标签页
+			await app.workspace.openLinkText(destination, match.sourcePath, "tab");
+		} else {
+			const leaf = getInternalLinkLeaf(app, settings, mode);
+			await openInternalInLeaf(app, leaf, destination, match.sourcePath);
+		}
 		return;
 	}
 
@@ -193,4 +200,75 @@ function extractFileName(destination: string): string {
 	const normalized = cleaned.replace(/\\/g, "/");
 	const parts = normalized.split("/");
 	return parts[parts.length - 1] ?? cleaned;
+}
+
+/**
+ * 在指定 leaf 中打开内部链接，支持 # 子路径（heading / block）。
+ */
+async function openInternalInLeaf(app: App, leaf: WorkspaceLeaf, destination: string, sourcePath: string): Promise<void> {
+	const hashIndex = destination.indexOf("#");
+	const linkpath = hashIndex >= 0 ? destination.slice(0, hashIndex) : destination;
+	const subpath = hashIndex >= 0 ? destination.slice(hashIndex) : undefined;
+
+	const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+	if (file) {
+		await leaf.openFile(file, {
+			active: true,
+			...(subpath ? { eState: { subpath } } : {}),
+		});
+	} else {
+		// 文件不存在时，fallback 让 Obsidian 自行处理（会提示创建）
+		app.workspace.setActiveLeaf(leaf, { focus: true });
+		await app.workspace.openLinkText(destination, sourcePath, false);
+	}
+}
+
+/**
+ * 根据设置获取内部链接应当打开的 WorkspaceLeaf。
+ * - window: 新窗口
+ * - split-horizontal / split-vertical: 分屏（智能分屏时复用已有同方向邻居）
+ */
+function getInternalLinkLeaf(
+	app: App,
+	settings: BetterLinksSettings,
+	mode: Exclude<InternalLinkOpenMode, "tab">,
+): WorkspaceLeaf {
+	if (mode === "window") {
+		return app.workspace.getLeaf("window");
+	}
+
+	const direction = mode === "split-horizontal" ? "vertical" : "horizontal";
+	const smartSplit = settings.smartSplit ?? true;
+
+	if (smartSplit) {
+		const sibling = findSiblingLeaf(app, direction);
+		if (sibling) return sibling;
+	}
+
+	return app.workspace.getLeaf("split", direction);
+}
+
+/**
+ * 在当前 active leaf 的同层 parent 中，寻找同方向的另一个 leaf。
+ * 返回 null 表示没找到可复用的。
+ */
+function findSiblingLeaf(app: App, direction: "vertical" | "horizontal"): WorkspaceLeaf | null {
+	const active = app.workspace.getLeaf(false);
+	const parent = active.parent;
+	if (!parent) return null;
+
+	// parent.direction 表示子节点的排列方向
+	// "vertical" = 子节点左右排列（即左右分屏），"horizontal" = 子节点上下排列（即上下分屏）
+	const parentWithDir = parent as typeof parent & { direction?: string };
+	if (parentWithDir.direction !== direction) return null;
+
+	const children: WorkspaceLeaf[] = (parent as typeof parent & { children?: WorkspaceLeaf[] }).children ?? [];
+	if (children.length < 2) return null;
+
+	// 返回第一个非 active 的 leaf
+	for (const child of children) {
+		if (child !== active) return child;
+	}
+
+	return null;
 }
