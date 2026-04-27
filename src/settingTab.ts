@@ -221,7 +221,7 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 .setName(t("settingsAliasTitlePropertyName"))
                 .setDesc(t("settingsAliasTitlePropertyDesc"))
                 .addText((text) => {
-                    text.setPlaceholder("title").setValue(this.plugin.settings.aliasTitleProperty ?? "title").onChange(async (value) => {
+                    text.setPlaceholder("Title").setValue(this.plugin.settings.aliasTitleProperty ?? "title").onChange(async (value) => {
                         this.plugin.settings.aliasTitleProperty = value || "title";
                         await this.plugin.saveSettings();
                     });

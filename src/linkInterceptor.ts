@@ -660,7 +660,7 @@ export class LinkInterceptor {
 
 		// 5. 从 embed-block 起始行往下扫描，查找 destination 匹配的链接
 		//    callout 通常跨多行，需要扫描整个 block 范围
-		const endOffset = Math.min(blockOffset + embedBlock.textContent!.length * 4, doc.length);
+		const endOffset = Math.min(blockOffset + (embedBlock.textContent?.length ?? 0) * 4, doc.length);
 		const endLine = doc.lineAt(endOffset).number;
 
 		for (let lineNum = blockLine.number; lineNum <= endLine; lineNum++) {
@@ -669,7 +669,7 @@ export class LinkInterceptor {
 			const match = findLinkByDestination(line.text, href, this.plugin.settings);
 			if (match) {
 				const editorMatch = withEditorRange(match, lineIndex, sourcePath);
-				return { editorMatch, anchorEl: anchor as HTMLElement };
+				return { editorMatch, anchorEl: anchor };
 			}
 		}
 

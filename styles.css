@@ -179,6 +179,10 @@
 	color: var(--text-faint);
 }
 
+.better-links-suggest__heading-prefix--dim {
+	opacity: 0.5;
+}
+
 /* 非 Markdown 文件条目降色 */
 .better-links-suggest__item--non-md .better-links-suggest__title {
 	color: var(--text-muted);

@@ -114,7 +114,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		this.close();
 		this.inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 		// dispatch 完成后解除屏蔽（微任务队列里恢复，不影响正常后续输入）
-		Promise.resolve().then(() => { this._suppressNext = false; });
+		void Promise.resolve().then(() => { this._suppressNext = false; });
 		this.callbacks.onSuggestionSelected();
 	}
 
@@ -155,7 +155,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		// 主行：标题（含层级前缀）
 		const titleEl = el.createDiv({ cls: "better-links-suggest__title" });
 		const prefixSpan = titleEl.createSpan({ cls: "better-links-suggest__heading-prefix", text: prefix });
-		prefixSpan.style.opacity = "0.5";
+		prefixSpan.addClass("better-links-suggest__heading-prefix--dim");
 		const textSpan = titleEl.createSpan();
 		if (item.match && item.match.matches.length > 0) {
 			renderResults(textSpan, headingText, item.match);
