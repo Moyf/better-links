@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.4.1] - 2026-04-27
+
+### English
+
+#### 🚀 Added
+
+- **Current tab option**: Added "Current tab" to the internal link open mode setting. Opens the link target in the same tab, replacing the current note.
+
+### 中文
+
+#### 🚀 新增
+
+- **当前标签页选项**：内部链接打开方式新增「当前标签页」选项，在当前标签页原地打开链接目标，替换当前笔记。
+
 ## [1.4.0] - 2026-04-27
 
 ### English

@@ -316,6 +316,7 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 				.setDesc(t("settingsOpenInternalDesc"))
 				.addDropdown((dropdown) => {
 					dropdown
+						.addOption("current", t("settingsOpenInternalCurrent"))
 						.addOption("tab", t("settingsOpenInternalTab"))
 						.addOption("window", t("settingsOpenInternalWindow"))
 						.addOption("split-horizontal", t("settingsOpenInternalSplitH"))

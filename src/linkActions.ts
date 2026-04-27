@@ -29,8 +29,9 @@ export async function openLink(app: App, match: EditorLinkMatch, values: Editabl
 
 	if (match.type === "wiki" || isLikelyInternalDestination(destination)) {
 		const mode = settings.internalLinkOpenMode ?? "tab";
-		if (mode === "tab") {
-			// 默认行为：新标签页
+		if (mode === "current") {
+			await app.workspace.openLinkText(destination, match.sourcePath, false);
+		} else if (mode === "tab") {
 			await app.workspace.openLinkText(destination, match.sourcePath, "tab");
 		} else {
 			const leaf = getInternalLinkLeaf(app, settings, mode);

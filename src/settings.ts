@@ -1,5 +1,5 @@
 export type ExternalLinkOpenMode = "browser" | "obsidian";
-export type InternalLinkOpenMode = "tab" | "window" | "split-horizontal" | "split-vertical";
+export type InternalLinkOpenMode = "current" | "tab" | "window" | "split-horizontal" | "split-vertical";
 export type DeleteLinkBehavior = "preserve-text" | "remove-all";
 /** 选中 suggest 时别名的生成模式 */
 export type AliasSyncMode = "heading-only" | "filename-then-heading" | "heading-then-filename";
