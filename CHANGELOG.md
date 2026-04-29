@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.4.2] - 2026-04-29
+
+### English
+
+#### 🐛 Fixed
+
+- **Smart split creating empty tab**: Fixed smart split reusing the sibling pane's active leaf, which replaced its content. Now correctly creates a new tab in the sibling pane via `createLeafInParent`.
+- **Smart split not detecting existing splits**: Fixed `findSiblingLeaf` only looking one level up (leaf → tabs) instead of two (leaf → tabs → split). The workspace tree is `split(direction) → tabs → leaf`, so the direction check was never matching.
+
+### 中文
+
+#### 🐛 修复
+
+- **智能分屏创建空标签页**：修复智能分屏复用了兄弟面板的当前活动 leaf 导致其内容被替换的问题。现在通过 `createLeafInParent` 在兄弟面板中正确创建新标签页。
+- **智能分屏无法识别已有分屏**：修复 `findSiblingLeaf` 只往上查找一层（leaf → tabs）而非两层（leaf → tabs → split）的问题。workspace 结构为 `split(direction) → tabs → leaf`，之前的 direction 检查始终不匹配。
+
 ## [1.4.1] - 2026-04-27
 
 ### English

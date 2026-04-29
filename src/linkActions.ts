@@ -232,7 +232,7 @@ async function openInternalInLeaf(app: App, leaf: WorkspaceLeaf, destination: st
 function getInternalLinkLeaf(
 	app: App,
 	settings: BetterLinksSettings,
-	mode: Exclude<InternalLinkOpenMode, "tab">,
+	mode: Exclude<InternalLinkOpenMode, "tab" | "current">,
 ): WorkspaceLeaf {
 	if (mode === "window") {
 		return app.workspace.getLeaf("window");
@@ -242,33 +242,40 @@ function getInternalLinkLeaf(
 	const smartSplit = settings.smartSplit ?? true;
 
 	if (smartSplit) {
-		const sibling = findSiblingLeaf(app, direction);
-		if (sibling) return sibling;
+		const siblingTabs = findSiblingTabsContainer(app, direction);
+		if (siblingTabs) {
+			// 在兄弟面板中创建新 tab
+			const children = (siblingTabs as { children?: unknown[] }).children ?? [];
+			return app.workspace.createLeafInParent(siblingTabs, children.length);
+		}
 	}
 
 	return app.workspace.getLeaf("split", direction);
 }
 
 /**
- * 在当前 active leaf 的同层 parent 中，寻找同方向的另一个 leaf。
- * 返回 null 表示没找到可复用的。
+ * 在当前 active leaf 所在的 split 容器中，寻找同方向的另一个面板（tabs 容器）。
+ * 结构：split (direction) → tabs → leaf
+ * 返回 tabs 容器（WorkspaceParent），而非 leaf。
  */
-function findSiblingLeaf(app: App, direction: "vertical" | "horizontal"): WorkspaceLeaf | null {
+function findSiblingTabsContainer(app: App, direction: "vertical" | "horizontal"): ReturnType<typeof app.workspace.getLeaf>["parent"] | null {
 	const active = app.workspace.getLeaf(false);
-	const parent = active.parent;
-	if (!parent) return null;
+	const tabsContainer = active.parent;
+	if (!tabsContainer) return null;
 
-	// parent.direction 表示子节点的排列方向
-	// "vertical" = 子节点左右排列（即左右分屏），"horizontal" = 子节点上下排列（即上下分屏）
-	const parentWithDir = parent as typeof parent & { direction?: string };
-	if (parentWithDir.direction !== direction) return null;
+	type TabsNode = { type?: string; parent?: SplitNode };
+	type SplitNode = { type?: string; direction?: string; children?: TabsNode[] };
 
-	const children: WorkspaceLeaf[] = (parent as typeof parent & { children?: WorkspaceLeaf[] }).children ?? [];
-	if (children.length < 2) return null;
+	const splitContainer = (tabsContainer as TabsNode).parent;
+	if (!splitContainer?.direction || splitContainer.direction !== direction) return null;
 
-	// 返回第一个非 active 的 leaf
-	for (const child of children) {
-		if (child !== active) return child;
+	const siblings = splitContainer.children ?? [];
+	if (siblings.length < 2) return null;
+
+	for (const sibling of siblings) {
+		if (sibling !== tabsContainer) {
+			return sibling as ReturnType<typeof app.workspace.getLeaf>["parent"];
+		}
 	}
 
 	return null;
