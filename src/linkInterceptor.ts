@@ -34,7 +34,7 @@ function matchesExcludeKeyword(destination: string, keywords: string[]): boolean
 }
 
 function dbg(enabled: boolean, ...args: unknown[]): void {
-	if (enabled) console.log("[BetterLinks]", ...args);
+	if (enabled) console.debug("[BetterLinks]", ...args);
 }
 
 export class LinkInterceptor {
