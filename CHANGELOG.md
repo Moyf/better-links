@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
+## [1.4.3] - 2026-05-08
+
+### English
+
+#### 🐛 Fixed
+
+- **iOS click mode on collapsed links**: Fixed tap on collapsed (rendered) links in Live Preview not triggering the editor popover. Obsidian's internal widget handler intercepted touch events before the plugin's pointer/click listeners. The plugin now uses `touchstart` (capture, passive:false) to block the native navigation and opens the popover on `touchend`.
+
+#### ⚡ Changed
+
+- **Debug mode setting**: Added a "Debug mode" toggle at the bottom of the settings page. When enabled, detailed logs are printed to the developer console for troubleshooting mobile issues.
+
+#### ⚠️ Known limitation
+
+- **iOS scroll on links**: In "Click" trigger mode on iOS, scrolling cannot begin from a link area because `touchstart` is intercepted. Start scroll gestures from non-link areas.
+
+### 中文
+
+#### 🐛 修复
+
+- **iOS 点击模式折叠链接不生效**：修复在 Live Preview 中点击折叠（渲染后）链接时编辑浮窗无法弹出的问题。Obsidian 内部的 widget handler 会在插件的 pointer/click 监听器之前拦截触屏事件。现在使用 `touchstart`（capture, passive:false）阻止原生跳转，并在 `touchend` 时打开浮窗。
+
+#### ⚡ 变更
+
+- **调试模式设置**：设置页底部新增「调试模式」开关，开启后在开发者控制台输出详细日志，方便排查移动端问题。
+
+#### ⚠️ 已知限制
+
+- **iOS 链接区域无法发起滚动**：「点击」触发模式下，iOS 上从链接区域无法开始滚动手势（因 `touchstart` 被拦截）。请从非链接区域发起滑动。
+
 ## [1.4.2] - 2026-04-29
 
 ### English
