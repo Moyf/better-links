@@ -33,6 +33,10 @@ function matchesExcludeKeyword(destination: string, keywords: string[]): boolean
 	return keywords.some((kw) => lower.includes(kw));
 }
 
+function dbg(enabled: boolean, ...args: unknown[]): void {
+	if (enabled) console.log("[BetterLinks]", ...args);
+}
+
 export class LinkInterceptor {
 	/** hover 模式：延迟显示定时器 */
 	private hoverShowTimer: ReturnType<typeof setTimeout> | null = null;
@@ -42,6 +46,19 @@ export class LinkInterceptor {
 	private hoveredLinkKey: string | null = null;
 	/** pointerdown 拦截成功标记，用于让后续 click 事件配合 preventDefault */
 	private pointerDownIntercepted = false;
+	/** touchstart 阶段记录的起始坐标，用于 touchmove 判断是否为拖动 */
+	private touchStartX = 0;
+	private touchStartY = 0;
+	/** touchstart 确认了链接，等待 touchend 打开 popover */
+	private touchIntercepted = false;
+	/** touchstart 阶段保存的链接匹配和上下文，供 touchend 使用 */
+	private touchLinkContext: {
+		match: ReturnType<typeof findLinkAtOffset>;
+		position: { line: number; ch: number };
+		markdownView: MarkdownView;
+		editorView: EditorView;
+		target: HTMLElement;
+	} | null = null;
 
 	constructor(
 		private readonly plugin: BetterLinksPlugin,
@@ -56,15 +73,101 @@ export class LinkInterceptor {
 	handlePointerDown(event: PointerEvent): void {
 		this.pointerDownIntercepted = false;
 
-		if (!this.plugin.settings.enabled) return;
+		dbg(this.plugin.settings.debugMode ?? false, "pointerdown", { pointerType: event.pointerType, button: event.button, clientX: event.clientX, clientY: event.clientY });
+
+		if (!this.plugin.settings.enabled) { dbg(this.plugin.settings.debugMode ?? false, "⏹ disabled"); return; }
 		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
-		if (triggerMethod !== "click") return;
+		dbg(this.plugin.settings.debugMode ?? false, "triggerMethod:", triggerMethod);
+		if (triggerMethod !== "click") { dbg(this.plugin.settings.debugMode ?? false, "⏹ not click mode, skip pointerdown intercept"); return; }
 		// 移动端触屏 event.button 可能为 -1，用 pointerType 区分触屏与右键
 		// 只处理 mouse 左键（button === 0）和 touch（button === -1 或 0）
-		if (event.button > 0) return;
+		if (event.button > 0) { dbg(this.plugin.settings.debugMode ?? false, "⏹ non-left button:", event.button); return; }
 
 		// disableNativeClick 的裸左键拦截也需要在 pointerdown 阶段处理
 		// （否则移动端 Obsidian 会在 click 之前就完成跳转）
+
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) { dbg(this.plugin.settings.debugMode ?? false, "⏹ target not HTMLElement"); return; }
+		if (target.matches("img") || target.closest("img") || target.closest(".image-embed")) { dbg(this.plugin.settings.debugMode ?? false, "⏹ image target"); return; }
+
+		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdownView?.file) { dbg(this.plugin.settings.debugMode ?? false, "⏹ no active MarkdownView/file"); return; }
+		if (!markdownView.containerEl.contains(target)) { dbg(this.plugin.settings.debugMode ?? false, "⏹ target not inside MarkdownView"); return; }
+
+		const cmEditorEl = target.closest(".cm-editor");
+		if (!(cmEditorEl instanceof HTMLElement)) { dbg(this.plugin.settings.debugMode ?? false, "⏹ no .cm-editor ancestor"); return; }
+
+		const editorView = EditorView.findFromDOM(cmEditorEl);
+		if (!editorView) { dbg(this.plugin.settings.debugMode ?? false, "⏹ EditorView.findFromDOM returned null"); return; }
+
+		// 移动端触屏：优先用 target 元素的中心坐标做 fallback，
+		// 避免 clientX/Y 在 pointerdown 时精度不足
+		const rect = target.getBoundingClientRect();
+		const x = event.clientX || (rect.left + rect.width / 2);
+		const y = event.clientY || (rect.top + rect.height / 2);
+		dbg(this.plugin.settings.debugMode ?? false, "coords used:", { x, y, rawClientX: event.clientX, rawClientY: event.clientY });
+
+		const documentOffset = editorView.posAtCoords({ x, y }, false);
+		dbg(this.plugin.settings.debugMode ?? false, "documentOffset:", documentOffset);
+		if (documentOffset == null) { dbg(this.plugin.settings.debugMode ?? false, "⏹ posAtCoords returned null"); return; }
+
+		const position = markdownView.editor.offsetToPos(documentOffset);
+		const lineText = markdownView.editor.getLine(position.line);
+		dbg(this.plugin.settings.debugMode ?? false, "line", position.line, "ch", position.ch, JSON.stringify(lineText));
+		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
+		dbg(this.plugin.settings.debugMode ?? false, "findLinkAtOffset result:", match);
+		if (!match) { dbg(this.plugin.settings.debugMode ?? false, "⏹ no link match at offset"); return; }
+
+		// edgeProtection：验证鼠标坐标是否真的在链接可视区域内
+		// 支持跨行（软换行）链接：首行检查左边界，末行检查右边界，中间行不检查 X 轴
+		if (this.plugin.settings.edgeProtection ?? true) {
+			const lineStartOffset = editorView.state.doc.line(position.line + 1).from;
+			const matchStartOffset = lineStartOffset + match.start;
+			const matchStart = editorView.coordsAtPos(matchStartOffset);
+			const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
+			dbg(this.plugin.settings.debugMode ?? false, "edgeProtection check:", { matchStart, matchEnd, x, y });
+			if (matchStart && matchEnd) {
+				const inside = this.isPointInsideLinkRect(x, y, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd);
+				dbg(this.plugin.settings.debugMode ?? false, "isPointInsideLinkRect:", inside);
+				if (!inside) { dbg(this.plugin.settings.debugMode ?? false, "⏹ edge protection rejected"); return; }
+			}
+		}
+
+		// 确认点在链接上 → 抢先 prevent，阻止 Obsidian 原生跳转
+		// 触屏时不调用 stopPropagation：iOS 上 pointerdown stopPropagation 会阻断后续 click 事件，
+		// 导致 handleClick 不触发、popover 无法打开。仅用 preventDefault 标记意图即可。
+		if (event.pointerType === "touch") {
+			dbg(this.plugin.settings.debugMode ?? false, "✅ pointerdown intercepted (touch — preventDefault only, no stopPropagation)");
+			event.preventDefault();
+		} else {
+			dbg(this.plugin.settings.debugMode ?? false, "✅ pointerdown intercepted (mouse — preventDefault + stopPropagation)");
+			event.preventDefault();
+			event.stopPropagation();
+		}
+		this.pointerDownIntercepted = true;
+	}
+
+	/**
+	 * touchstart capture：iOS 上 Live Preview 折叠链接的跳转发生在 Obsidian 内部的
+	 * pointerdown/mousedown handler 中，比 document capture 更早执行（widget 内部监听）。
+	 * 唯一能在它之前拦截的只有 touchstart（capture + passive:false）。
+	 *
+	 * 策略：
+	 * - 检测到手指落在链接上 → preventDefault 阻止后续所有默认行为（包括 Obsidian 跳转）
+	 * - 保存链接上下文，在 touchend 里直接打开 popover
+	 * - touchmove 超过阈值时取消标记（恢复滚动能力——但注意 preventDefault 已调用，
+	 *   所以本次 touch 序列的滚动无法恢复；这是为了阻止跳转的必要代价）
+	 */
+	handleTouchStart(event: TouchEvent): void {
+		this.touchIntercepted = false;
+		this.touchLinkContext = null;
+
+		if (!this.plugin.settings.enabled) return;
+		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
+		if (triggerMethod !== "click") return;
+
+		const touch = event.touches[0];
+		if (!touch) return;
 
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) return;
@@ -79,40 +182,104 @@ export class LinkInterceptor {
 		const editorView = EditorView.findFromDOM(cmEditorEl);
 		if (!editorView) return;
 
-		// 移动端触屏：优先用 target 元素的中心坐标做 fallback，
-		// 避免 clientX/Y 在 pointerdown 时精度不足
-		const x = event.clientX || (target.getBoundingClientRect().left + target.getBoundingClientRect().width / 2);
-		const y = event.clientY || (target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2);
+		const rect = target.getBoundingClientRect();
+		const x = touch.clientX || (rect.left + rect.width / 2);
+		const y = touch.clientY || (rect.top + rect.height / 2);
+
+		dbg(this.plugin.settings.debugMode ?? false, "touchstart", { x, y, targetTag: target.tagName, targetClass: target.className });
 
 		const documentOffset = editorView.posAtCoords({ x, y }, false);
-		if (documentOffset == null) return;
+		if (documentOffset == null) { dbg(this.plugin.settings.debugMode ?? false, "touchstart ⏹ posAtCoords null"); return; }
 
 		const position = markdownView.editor.offsetToPos(documentOffset);
 		const lineText = markdownView.editor.getLine(position.line);
 		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
-		if (!match) return;
+		if (!match) { dbg(this.plugin.settings.debugMode ?? false, "touchstart ⏹ no link match"); return; }
 
-		// edgeProtection：验证鼠标坐标是否真的在链接可视区域内
-		// 支持跨行（软换行）链接：首行检查左边界，末行检查右边界，中间行不检查 X 轴
 		if (this.plugin.settings.edgeProtection ?? true) {
 			const lineStartOffset = editorView.state.doc.line(position.line + 1).from;
 			const matchStartOffset = lineStartOffset + match.start;
 			const matchStart = editorView.coordsAtPos(matchStartOffset);
 			const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
 			if (matchStart && matchEnd) {
-				if (!this.isPointInsideLinkRect(x, y, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd)) return;
+				if (!this.isPointInsideLinkRect(x, y, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd)) {
+					dbg(this.plugin.settings.debugMode ?? false, "touchstart ⏹ edge protection rejected");
+					return;
+				}
 			}
 		}
 
-		// 确认点在链接上 → 抢先 prevent，阻止 Obsidian 原生跳转
+		// 排除特定链接
+		const excludeMode: ExcludeMode = this.plugin.settings.excludeMode ?? "disabled";
+		if (excludeMode === "click" || excludeMode === "all") {
+			const keywords = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
+			if (matchesExcludeKeyword(match.destination, keywords)) {
+				dbg(this.plugin.settings.debugMode ?? false, "touchstart ⏹ excluded by keyword");
+				return;
+			}
+		}
+
+		// 确认是链接 → preventDefault 阻止 Obsidian 跳转
+		this.touchStartX = x;
+		this.touchStartY = y;
+		this.touchIntercepted = true;
+		this.touchLinkContext = { match, position, markdownView, editorView, target };
+
+		dbg(this.plugin.settings.debugMode ?? false, "touchstart ✅ preventDefault — blocking Obsidian navigation, will open popover on touchend");
 		event.preventDefault();
 		event.stopPropagation();
-		this.pointerDownIntercepted = true;
+	}
+
+	/**
+	 * touchmove：如果手指移动超过阈值（拖动手势），取消本次 touch 拦截。
+	 * 注意：由于 touchstart 已经 preventDefault，本次 touch 序列的滚动无法恢复，
+	 * 但标记取消后 touchend 不会打开 popover。
+	 */
+	handleTouchMove(event: TouchEvent): void {
+		if (!this.touchIntercepted) return;
+		const touch = event.touches[0];
+		if (!touch) return;
+		const dx = Math.abs(touch.clientX - this.touchStartX);
+		const dy = Math.abs(touch.clientY - this.touchStartY);
+		const DRAG_THRESHOLD = 10;
+		if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+			dbg(this.plugin.settings.debugMode ?? false, "touchmove ⏹ drag detected, cancelling intercept", { dx, dy });
+			this.touchIntercepted = false;
+			this.touchLinkContext = null;
+		}
+	}
+
+	/**
+	 * touchend：touchstart 确认链接 + 未被 touchmove 取消 → 打开 popover。
+	 */
+	handleTouchEnd(_event: TouchEvent): void {
+		if (!this.touchIntercepted || !this.touchLinkContext) {
+			this.touchIntercepted = false;
+			this.touchLinkContext = null;
+			return;
+		}
+
+		const { match, position, markdownView, editorView, target } = this.touchLinkContext;
+		this.touchIntercepted = false;
+		this.touchLinkContext = null;
+
+		if (!match || !markdownView.file) return;
+
+		const editorMatch = withEditorRange(match, position.line, markdownView.file.path);
+
+		dbg(this.plugin.settings.debugMode ?? false, "touchend ✅ opening popover for:", match.destination);
+
+		if (!target.isConnected) {
+			new Notice(this.plugin.t("noticeClickedLinkMissing"));
+			return;
+		}
+
+		this.linkEditManager.show(editorMatch, target, target);
 	}
 
 	handleClick(event: MouseEvent): Promise<void> {
-		// 如果 pointerdown 已抢先拦截，click 事件的 defaultPrevented 可能为 true，
-		// 需要跳过 defaultPrevented 检查，让后续逻辑正常执行
+		dbg(this.plugin.settings.debugMode ?? false, "click", { button: event.button, clientX: event.clientX, clientY: event.clientY, defaultPrevented: event.defaultPrevented, pointerDownIntercepted: this.pointerDownIntercepted });
+		// pointerDownIntercepted：桌面 pointer 路径已在 pointerdown 阶段拦截
 		const skipDefaultPreventedCheck = this.pointerDownIntercepted;
 		this.pointerDownIntercepted = false;
 		return this.handlePointerTriggerEvent(event, "click", skipDefaultPreventedCheck);
@@ -185,14 +352,17 @@ export class LinkInterceptor {
 
 	private async handlePointerTriggerEvent(event: MouseEvent, eventType: "click" | "contextmenu", skipDefaultPreventedCheck: boolean): Promise<void> {
 		if (!this.plugin.settings.enabled) {
+			dbg(this.plugin.settings.debugMode ?? false, "handlePointerTriggerEvent ⏹ disabled");
 			return;
 		}
 		if (!skipDefaultPreventedCheck && event.defaultPrevented) {
+			dbg(this.plugin.settings.debugMode ?? false, "handlePointerTriggerEvent ⏹ defaultPrevented");
 			return;
 		}
 
 		const triggerMethod = this.plugin.settings.triggerMethod ?? "hover";
 		const triggerModifier = this.plugin.settings.triggerModifier ?? "none";
+		dbg(this.plugin.settings.debugMode ?? false, "handlePointerTriggerEvent", { eventType, triggerMethod, triggerModifier, skipDefaultPreventedCheck });
 
 		// ── 禁用左键原生点击 ──
 		// 非 click 模式 + 启用了 disableNativeClick + 左键无修饰键 → 吞掉事件
@@ -205,6 +375,7 @@ export class LinkInterceptor {
 		) {
 			// 确认点击目标确实在编辑器链接上，才拦截
 			if (this.isClickOnEditorLink(event)) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ disableNativeClick intercepted");
 				event.preventDefault();
 				event.stopPropagation();
 				return;
@@ -213,43 +384,45 @@ export class LinkInterceptor {
 
 		// hover 模式下不拦截，保留默认行为
 		if (triggerMethod === "hover") {
+			dbg(this.plugin.settings.debugMode ?? false, "⏹ hover mode, skip click handling");
 			return;
 		}
 		if (triggerMethod === "click") {
 			if (eventType !== "click" || event.button !== 0) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ click mode but event mismatch", { eventType, button: event.button });
 				return;
 			}
 		}
 		if (triggerMethod === "right-click" && eventType !== "contextmenu") {
+			dbg(this.plugin.settings.debugMode ?? false, "⏹ right-click mode but not contextmenu");
 			return;
 		}
 
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) {
+			dbg(this.plugin.settings.debugMode ?? false, "⏹ target not HTMLElement");
 			return;
 		}
 
 		if (target.matches("img") || target.closest("img") || target.closest(".image-embed")) {
+			dbg(this.plugin.settings.debugMode ?? false, "⏹ image target");
 			return;
 		}
 
 		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-		if (!markdownView?.file || !markdownView.containerEl.contains(target)) {
-			return;
-		}
+		if (!markdownView?.file) { dbg(this.plugin.settings.debugMode ?? false, "⏹ no active MarkdownView/file"); return; }
+		if (!markdownView.containerEl.contains(target)) { dbg(this.plugin.settings.debugMode ?? false, "⏹ target not inside MarkdownView"); return; }
 
 		const cmEditorEl = target.closest(".cm-editor");
-		if (!(cmEditorEl instanceof HTMLElement)) {
-			return;
-		}
+		if (!(cmEditorEl instanceof HTMLElement)) { dbg(this.plugin.settings.debugMode ?? false, "⏹ no .cm-editor ancestor"); return; }
 
 		const editorView = EditorView.findFromDOM(cmEditorEl);
-		if (!editorView) {
-			return;
-		}
+		if (!editorView) { dbg(this.plugin.settings.debugMode ?? false, "⏹ EditorView.findFromDOM returned null"); return; }
 
 		const documentOffset = editorView.posAtCoords({ x: event.clientX, y: event.clientY }, false);
+		dbg(this.plugin.settings.debugMode ?? false, "click posAtCoords:", { clientX: event.clientX, clientY: event.clientY, documentOffset });
 		if (documentOffset == null) {
+			dbg(this.plugin.settings.debugMode ?? false, "⏹ posAtCoords returned null");
 			return;
 		}
 
@@ -258,12 +431,15 @@ export class LinkInterceptor {
 		
 		for (const sel of editorView.state.selection.ranges) {
 			if (documentOffset >= sel.from && documentOffset < sel.to) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ offset is inside selection range");
 				return;
 			}
 		}
 
 		const lineText = markdownView.editor.getLine(position.line);
+		dbg(this.plugin.settings.debugMode ?? false, "line", position.line, "ch", position.ch, JSON.stringify(lineText));
 		const match = findLinkAtOffset(lineText, position.ch, this.plugin.settings);
+		dbg(this.plugin.settings.debugMode ?? false, "findLinkAtOffset result:", match);
 
 		if (!match) {
 			// fallback：尝试检测 embed-block（callout 等）内的渲染链接
@@ -310,6 +486,7 @@ export class LinkInterceptor {
 		if (excludeMode === "click" || excludeMode === "all") {
 			const keywords = parseExcludeKeywords(this.plugin.settings.excludeKeywords);
 			if (matchesExcludeKeyword(match.destination, keywords)) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ excluded by keyword:", match.destination);
 				return;
 			}
 		}
@@ -321,9 +498,13 @@ export class LinkInterceptor {
 		const matchStartOffset = lineStartOffset + match.start;
 		const matchStart = editorView.coordsAtPos(matchStartOffset);
 		const matchEnd = editorView.coordsAtPos(lineStartOffset + match.end);
+		dbg(this.plugin.settings.debugMode ?? false, "click edgeProtection check:", { matchStart, matchEnd, clientX: event.clientX, clientY: event.clientY });
 
 		if ((this.plugin.settings.edgeProtection ?? true) && matchStart && matchEnd) {
-			if (!this.isPointInsideLinkRect(event.clientX, event.clientY, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd)) {
+			const inside = this.isPointInsideLinkRect(event.clientX, event.clientY, documentOffset, matchStartOffset, lineStartOffset + match.end, matchStart, matchEnd);
+			dbg(this.plugin.settings.debugMode ?? false, "isPointInsideLinkRect:", inside);
+			if (!inside) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ edge protection rejected");
 				return;
 			}
 		}
@@ -331,18 +512,22 @@ export class LinkInterceptor {
 		// 修饰键检查
 		if (triggerModifier === "ctrl") {
 			if (!(event.ctrlKey || event.metaKey)) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ ctrl modifier not held");
 				return;
 			}
 		} else if (triggerModifier === "shift") {
 			if (!event.shiftKey) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ shift modifier not held");
 				return;
 			}
 		} else if (triggerModifier === "alt") {
 			if (!event.altKey) {
+				dbg(this.plugin.settings.debugMode ?? false, "⏹ alt modifier not held");
 				return;
 			}
 		}
 
+		dbg(this.plugin.settings.debugMode ?? false, "✅ preventDefault + show popover, destination:", match.destination);
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -362,12 +547,12 @@ export class LinkInterceptor {
 
 		const referenceEl = triggerMethod === "right-click"
 			? this.createVirtualReference(matchStartOffset, lineStartOffset + match.end, editorView)
-			: this.resolveReferenceElement(event, target, markdownView);
+			: this.resolveReferenceElement(event.clientX, event.clientY, target, markdownView);
 		this.linkEditManager.show(editorMatch, referenceEl, target);
 	}
 
-	private resolveReferenceElement(event: MouseEvent, fallback: HTMLElement, markdownView: MarkdownView): HTMLElement {
-		const pointEl = document.elementFromPoint(event.clientX, event.clientY);
+	private resolveReferenceElement(x: number, y: number, fallback: HTMLElement, markdownView: MarkdownView): HTMLElement {
+		const pointEl = document.elementFromPoint(x, y);
 		if (pointEl instanceof HTMLElement && markdownView.containerEl.contains(pointEl)) {
 			return pointEl;
 		}

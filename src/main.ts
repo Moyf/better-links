@@ -57,6 +57,37 @@ export default class BetterLinksPlugin extends Plugin {
 			{ capture: true }
 		);
 
+		// iOS WebView 上 pointerdown 的 preventDefault 不能阻止原生链接跳转，
+		// 需要额外监听 touchstart（capture）来补充拦截。
+		this.registerDomEvent(
+			document,
+			"touchstart",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchStart(event);
+			},
+			{ capture: true, passive: false }
+		);
+
+		// touchmove：检测拖动手势，超过阈值时取消 touch 拦截，保留滚动行为
+		this.registerDomEvent(
+			document,
+			"touchmove",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchMove(event);
+			},
+			{ capture: true, passive: true }
+		);
+
+		// touchend：touchstart 确认链接后，在 touchend 打开 popover
+		this.registerDomEvent(
+			document,
+			"touchend",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchEnd(event);
+			},
+			{ capture: true }
+		);
+
 		this.registerDomEvent(
 			document,
 			"contextmenu",

@@ -109,6 +109,9 @@ const ZH_CN = {
 	settingsExcludeModeAll: "全部",
 	settingsExcludeKeywordsName: "排除关键字",
 	settingsExcludeKeywordsDesc: "链接目标包含以下任一关键字时，不弹出编辑浮窗。用逗号或换行分隔。",
+	settingsDebugGroup: "调试",
+	settingsDebugModeName: "调试模式",
+	settingsDebugModeDesc: "开启后在开发者控制台输出详细日志，用于排查问题（如移动端点击链接不生效）。正常使用时请关闭。",
 } as const;
 
 const EN_US: Record<I18nKey, string> = {
@@ -220,6 +223,9 @@ const EN_US: Record<I18nKey, string> = {
 	settingsExcludeModeAll: "All",
 	settingsExcludeKeywordsName: "Exclude keywords",
 	settingsExcludeKeywordsDesc: "The editing popover will not appear when the link destination contains any of these keywords. Separate with commas or newlines.",
+	settingsDebugGroup: "Debug",
+	settingsDebugModeName: "Debug mode",
+	settingsDebugModeDesc: "When enabled, detailed logs are printed to the developer console. Useful for diagnosing issues (e.g. links not responding on mobile). Turn off during normal use.",
 };
 
 export function createTranslator(localeHint: string): (key: I18nKey) => string {

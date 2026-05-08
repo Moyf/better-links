@@ -50,6 +50,8 @@ export interface BetterLinksSettings {
     internalLinkOpenMode?: InternalLinkOpenMode;
     /** 智能分屏：已有同方向分屏时复用已有 leaf，而非再新建 */
     smartSplit?: boolean;
+    /** 调试模式：在控制台输出详细日志，用于排查问题 */
+    debugMode?: boolean;
 }
 
 export const DEFAULT_SETTINGS: BetterLinksSettings = {
@@ -76,4 +78,5 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     excludeKeywords: ".base, .canvas",
     internalLinkOpenMode: "tab",
     smartSplit: true,
+    debugMode: false,
 };

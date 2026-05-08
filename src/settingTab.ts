@@ -422,5 +422,22 @@ export class BetterLinksSettingTab extends PluginSettingTab {
 		});
 
 		updateExcludeSubSettings();
+
+		// ── 调试 group ──────────────────────────────────────────────────────
+		const debugGroup = new SettingGroup(containerEl)
+			.setHeading(t("settingsDebugGroup"))
+			.addClass("better-links-settings-group");
+
+		debugGroup.addSetting((setting) => {
+			setting
+				.setName(t("settingsDebugModeName"))
+				.setDesc(t("settingsDebugModeDesc"))
+				.addToggle((toggle) => {
+					toggle.setValue(this.plugin.settings.debugMode ?? false).onChange(async (value) => {
+						this.plugin.settings.debugMode = value;
+						await this.plugin.saveSettings();
+					});
+				});
+		});
 	}
 }

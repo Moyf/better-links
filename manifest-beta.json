@@ -1,0 +1,10 @@
+{
+  "id": "better-links",
+  "name": "Better Links",
+  "version": "1.4.3-beta.6",
+  "minAppVersion": "1.11.0",
+  "description": "Enhance link editing experience with floating editor popover. Click links to edit their display text and URL with quick action buttons.",
+  "author": "Moyf",
+  "authorUrl": "https://github.com/Moyf",
+  "isDesktopOnly": false
+}
