@@ -3,7 +3,23 @@
 All notable changes to this project will be documented in this file.
 本项目的重要变更会记录在此文件中。
 
-## [1.4.3] - 2026-05-08
+## [1.4.4] - 2026-05-13
+
+### English
+
+#### 🐛 Fixed
+
+- **Popover mispositioned to top-left on line-ending links**: Fixed the popover appearing in the top-left corner when right-clicking a Markdown link that ends at the end of a line. In Live Preview, `](url)` is folded, so `coordsAtPos` at `match.end` returned `null` for line-ending positions. The virtual reference now uses the visible end (`]` position) instead of the raw `match.end`, with mouse coordinates as the final fallback.
+- **Live Preview expansion on right-click**: Fixed the editor line briefly expanding and then collapsing when right-clicking a link (causing text jitter). The plugin now intercepts `pointerdown(button=2)` in capture phase and calls `preventDefault` to block `mousedown` from reaching CM6, preventing the cursor from moving into the link line.
+
+### 中文
+
+#### 🐛 修复
+
+- **行尾链接弹窗定位到左上角**：修复右键点击位于行尾的 Markdown 链接时，浮窗出现在左上角的问题。Live Preview 会折叠 `](url)` 部分，导致 `coordsAtPos` 对行尾位置返回 `null`，定位退化为 `(0, 0)`。现在用链接可见结尾（`]` 的位置）替代原始的 `match.end`，并以鼠标坐标作为最终 fallback。
+- **右键时 Live Preview 先展开再收缩（文字跳动）**：修复右键点击链接时，编辑器行短暂展开然后因失去焦点而收缩导致文字跳动的问题。现在在 capture 阶段拦截 `pointerdown(button=2)` 并调用 `preventDefault`，阻止 `mousedown` 传递给 CM6，防止光标移入链接行触发展开。
+
+
 
 ### English
 
