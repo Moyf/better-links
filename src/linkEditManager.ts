@@ -251,7 +251,22 @@ export class LinkEditManager {
 			noticeKey = "noticeLinkRemoved";
 		}
 
+		// 记录链接起始位置，完全移除时用于恢复光标
+		const cursorPos = forceRemoveAll ? { ...session.match.range.from } : null;
+
 		this.replaceActiveRange(replacement);
+
+		// 完全移除链接后，将光标定位到链接原起始处
+		// 需要先 focus editor，否则 popover button 持有焦点时 setCursor 不生效
+		if (cursorPos) {
+			const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			const editor = markdownView?.editor;
+			if (editor) {
+				editor.focus();
+				editor.setCursor(cursorPos);
+			}
+		}
+
 		new Notice(this.plugin.t(noticeKey));
 		this.close();
 	}
