@@ -67,9 +67,9 @@ function computeVisibleEndCh(match: EditorLinkMatch): number {
 
 export class LinkInterceptor {
 	/** hover 模式：延迟显示定时器 */
-	private hoverShowTimer: ReturnType<typeof setTimeout> | null = null;
+	private hoverShowTimer: number | null = null;
 	/** hover 模式：延迟关闭定时器 */
-	private hoverHideTimer: ReturnType<typeof setTimeout> | null = null;
+	private hoverHideTimer: number | null = null;
 	/** hover 模式：当前悬停链接的序列化 key（用于判断是否同一个链接） */
 	private hoveredLinkKey: string | null = null;
 	/** pointerdown 拦截成功标记，用于让后续 click 事件配合 preventDefault */
@@ -84,7 +84,6 @@ export class LinkInterceptor {
 		match: ReturnType<typeof findLinkAtOffset>;
 		position: { line: number; ch: number };
 		markdownView: MarkdownView;
-		editorView: EditorView;
 		target: HTMLElement;
 	} | null = null;
 
@@ -296,7 +295,7 @@ export class LinkInterceptor {
 		this.touchStartX = x;
 		this.touchStartY = y;
 		this.touchIntercepted = true;
-		this.touchLinkContext = { match, position, markdownView, editorView, target };
+		this.touchLinkContext = { match, position, markdownView, target };
 
 		dbg(this.plugin.settings.debugMode ?? false, "touchstart ✅ preventDefault — blocking Obsidian navigation, will open popover on touchend");
 		event.preventDefault();
@@ -332,7 +331,7 @@ export class LinkInterceptor {
 			return;
 		}
 
-		const { match, position, markdownView, editorView, target } = this.touchLinkContext;
+		const { match, position, markdownView, target } = this.touchLinkContext;
 		this.touchIntercepted = false;
 		this.touchLinkContext = null;
 
@@ -408,7 +407,7 @@ export class LinkInterceptor {
 		}
 		this.clearHoverHideTimer();
 		const delay = HOVER_LEAVE_DELAY;
-		this.hoverHideTimer = setTimeout(() => {
+		this.hoverHideTimer = window.setTimeout(() => {
 			// 关闭前再次检查，防止计时期间用户开始交互
 			if (this.linkEditManager.isUserInteracting()) {
 				return;
@@ -627,7 +626,7 @@ export class LinkInterceptor {
 	}
 
 	private resolveReferenceElement(x: number, y: number, fallback: HTMLElement, markdownView: MarkdownView): HTMLElement {
-		const pointEl = document.elementFromPoint(x, y);
+		const pointEl = activeDocument.elementFromPoint(x, y);
 		if (pointEl instanceof HTMLElement && markdownView.containerEl.contains(pointEl)) {
 			return pointEl;
 		}
@@ -774,7 +773,7 @@ export class LinkInterceptor {
 		this.clearHoverHideTimer();
 		this.hoveredLinkKey = linkKey;
 
-		this.hoverShowTimer = setTimeout(() => {
+		this.hoverShowTimer = window.setTimeout(() => {
 			this.hoverShowTimer = null;
 			if (!targetEl.isConnected) return;
 			this.linkEditManager.show(editorMatch, targetEl);
@@ -876,14 +875,14 @@ export class LinkInterceptor {
 
 	private clearHoverShowTimer(): void {
 		if (this.hoverShowTimer !== null) {
-			clearTimeout(this.hoverShowTimer);
+			window.clearTimeout(this.hoverShowTimer);
 			this.hoverShowTimer = null;
 		}
 	}
 
 	private clearHoverHideTimer(): void {
 		if (this.hoverHideTimer !== null) {
-			clearTimeout(this.hoverHideTimer);
+			window.clearTimeout(this.hoverHideTimer);
 			this.hoverHideTimer = null;
 		}
 	}
@@ -907,7 +906,7 @@ export class LinkInterceptor {
 
 		// 2. 必须在 cm-embed-block 内（callout / embed 等）
 		const embedBlock = anchor.closest(".cm-embed-block");
-		if (!embedBlock || !(embedBlock instanceof HTMLElement)) return null;
+		if (!embedBlock || !embedBlock.instanceOf(HTMLElement)) return null;
 
 		// 3. 获取链接目标
 		const href = anchor.getAttribute("data-href") ?? anchor.getAttribute("href");

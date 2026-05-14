@@ -1,4 +1,4 @@
-import { Notice, type App, type WorkspaceLeaf } from "obsidian";
+import { getLanguage, Notice, type App, type WorkspaceLeaf } from "obsidian";
 import { defaultDisplayText, deletionReplacement, isLikelyExternalDestination, isLikelyInternalDestination, toMarkdownSnippet, type EditorLinkMatch } from "./linkDetector";
 import { createTranslator } from "./i18n";
 import type { BetterLinksSettings, InternalLinkOpenMode } from "./settings";
@@ -18,7 +18,7 @@ export interface EditableLinkValues {
 }
 
 const t = createTranslator(
-	window.localStorage.getItem("language") ?? "en"
+	getLanguage()
 );
 export async function openLink(app: App, match: EditorLinkMatch, values: EditableLinkValues, settings: BetterLinksSettings): Promise<void> {
 	const destination = values.destination.trim();

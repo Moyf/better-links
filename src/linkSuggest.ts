@@ -211,7 +211,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	private getDisplayName(file: TFile): string {
 		const propertyKey = this.settings.aliasTitleProperty ?? "title";
 		const fm = this.app.metadataCache.getFileCache(file)?.frontmatter;
-		const titleFromFm = fm?.[propertyKey];
+		const titleFromFm: unknown = fm?.[propertyKey];
 		if (typeof titleFromFm === "string" && titleFromFm.trim()) {
 			return titleFromFm.trim();
 		}

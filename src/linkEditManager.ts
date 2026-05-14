@@ -16,7 +16,7 @@ export class LinkEditManager {
 	/** 当前 destination 输入框是否处于警告状态（校验失败） */
 	private destinationInvalid = false;
 	/** debounce 定时器 */
-	private validateDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	private validateDebounceTimer: number | null = null;
 	/** 链接目标 suggest 实例（单例，复用避免重复创建 suggestion-container） */
 	private readonly suggest: LinkDestinationSuggest;
 
@@ -317,14 +317,14 @@ export class LinkEditManager {
 	/** 调度 debounce 校验（300ms） */
 	private scheduleValidation(destination: string): void {
 		this.cancelPendingValidation();
-		this.validateDebounceTimer = setTimeout(() => {
+		this.validateDebounceTimer = window.setTimeout(() => {
 			this.validateDestination(destination);
 		}, 300);
 	}
 
 	private cancelPendingValidation(): void {
 		if (this.validateDebounceTimer !== null) {
-			clearTimeout(this.validateDebounceTimer);
+			window.clearTimeout(this.validateDebounceTimer);
 			this.validateDebounceTimer = null;
 		}
 	}

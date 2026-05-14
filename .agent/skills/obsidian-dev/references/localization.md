@@ -2,14 +2,17 @@
 
 ## Getting Obsidian's UI Language
 
-**Always use `localStorage.getItem("language")`** to get the current Obsidian interface language. This reads the value Obsidian itself stores and is more reliable than `navigator.language` (which reflects the OS language, not Obsidian's UI setting).
+**Always use `getLanguage()`** (exported from `obsidian`) to get the current Obsidian interface language. This is the official API recommended by Obsidian's plugin review process.
 
 ```ts
-const lang = window.localStorage.getItem("language") ?? "en";
+import { getLanguage } from "obsidian";
+
+const lang = getLanguage();
 const t = createTranslator(lang);
 ```
 
 **Do NOT use:**
+- `localStorage.getItem("language")` — deprecated for plugin review; use `getLanguage()` instead
 - `navigator.language` — reflects OS/browser language, not Obsidian's setting
 - `window.i18next?.language` — accesses Obsidian internals, may break across versions
 - `moment.locale()` — reflects date locale, not UI language
@@ -51,16 +54,16 @@ export function createTranslator(localeHint: string): (key: I18nKey) => string {
 - **`src/main.ts`** — plugin-level translator, passed to `LinkEditManager` and `PopoverEditor` via constructor
 - **`src/linkActions.ts`** — module-level `const t`, used for Notice messages
 
-Both must use `localStorage.getItem("language")`:
+Both must use `getLanguage()`:
 
 ```ts
 // main.ts
 private readonly translate = createTranslator(
-  window.localStorage.getItem("language") ?? "en"
+  getLanguage()
 );
 
 // linkActions.ts (module-level)
 const t = createTranslator(
-  window.localStorage.getItem("language") ?? "en"
+  getLanguage()
 );
 ```

@@ -1,4 +1,4 @@
-import { MarkdownView, Plugin } from "obsidian";
+import { getLanguage, MarkdownView, Plugin } from "obsidian";
 import { createTranslator, type I18nKey } from "./i18n";
 import { LinkEditManager } from "./linkEditManager";
 import { LinkInterceptor } from "./linkInterceptor";
@@ -8,7 +8,7 @@ import { BetterLinksSettings, DEFAULT_SETTINGS } from "./settings";
 export default class BetterLinksPlugin extends Plugin {
 	settings: BetterLinksSettings;
 	private readonly translate = createTranslator(
-		window.localStorage.getItem("language") ?? "en"
+		getLanguage()
 	);
 	private linkEditManager: LinkEditManager;
 	private linkInterceptor: LinkInterceptor;
@@ -40,7 +40,7 @@ export default class BetterLinksPlugin extends Plugin {
 		});
 
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"click",
 			(event: MouseEvent) => {
 				void this.linkInterceptor.handleClick(event);
@@ -49,7 +49,7 @@ export default class BetterLinksPlugin extends Plugin {
 		);
 
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"pointerdown",
 			(event: PointerEvent) => {
 				this.linkInterceptor.handlePointerDown(event);
@@ -60,7 +60,7 @@ export default class BetterLinksPlugin extends Plugin {
 		// iOS WebView 上 pointerdown 的 preventDefault 不能阻止原生链接跳转，
 		// 需要额外监听 touchstart（capture）来补充拦截。
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"touchstart",
 			(event: TouchEvent) => {
 				this.linkInterceptor.handleTouchStart(event);
@@ -70,7 +70,7 @@ export default class BetterLinksPlugin extends Plugin {
 
 		// touchmove：检测拖动手势，超过阈值时取消 touch 拦截，保留滚动行为
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"touchmove",
 			(event: TouchEvent) => {
 				this.linkInterceptor.handleTouchMove(event);
@@ -80,7 +80,7 @@ export default class BetterLinksPlugin extends Plugin {
 
 		// touchend：touchstart 确认链接后，在 touchend 打开 popover
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"touchend",
 			(event: TouchEvent) => {
 				this.linkInterceptor.handleTouchEnd(event);
@@ -89,7 +89,7 @@ export default class BetterLinksPlugin extends Plugin {
 		);
 
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"contextmenu",
 			(event: MouseEvent) => {
 				void this.linkInterceptor.handleContextMenu(event);
@@ -98,7 +98,7 @@ export default class BetterLinksPlugin extends Plugin {
 		);
 
 		this.registerDomEvent(
-			document,
+			activeDocument,
 			"mousemove",
 			(event: MouseEvent) => {
 				this.linkInterceptor.handleMouseMove(event);

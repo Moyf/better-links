@@ -60,7 +60,7 @@ export class PopoverEditor {
 		private readonly events: PopoverEditorEvents,
 		private readonly t: PopoverTranslateFn,
 	) {
-		this.wrapperEl = document.body.createDiv({ cls: "better-links-popover-wrapper" });
+		this.wrapperEl = activeDocument.body.createDiv({ cls: "better-links-popover-wrapper" });
 		this.wrapperEl.hide();
 		this.rootEl = this.wrapperEl.createDiv({ cls: "better-links-popover" });
 
@@ -121,7 +121,7 @@ export class PopoverEditor {
 		});
 
 		this.deleteButtonEl = this.createIconButton(rightEl, "trash-2", this.t("popoverAriaDelete"), (event) => {
-			const forceRemoveAll = event instanceof MouseEvent && (event.ctrlKey || event.metaKey);
+			const forceRemoveAll = event.instanceOf(MouseEvent) && (event.ctrlKey || event.metaKey);
 			this.events.onDelete(forceRemoveAll);
 		}, true);
 
@@ -158,7 +158,7 @@ export class PopoverEditor {
 
 	/** 检查 popover 中是否有输入框获焦 */
 	hasInputFocus(): boolean {
-		return this.rootEl.contains(document.activeElement);
+		return this.rootEl.contains(activeDocument.activeElement);
 	}
 
 	updateEmbedState(isEmbedded: boolean): void {
@@ -227,7 +227,7 @@ export class PopoverEditor {
 		/* Wait for Popper to finish positioning, then reveal with fade-in */
 		void this.popperInstance.update().then(() => {
 			this.wrapperEl.setCssStyles({ visibility: "" });
-			requestAnimationFrame(() => {
+			window.requestAnimationFrame(() => {
 				this.rootEl.addClass("is-visible");
 			});
 		});
@@ -303,23 +303,23 @@ export class PopoverEditor {
 			this.schedulePopperUpdate();
 		};
 
-		document.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
-		document.addEventListener("keydown", this.keydownHandler, true);
-		document.addEventListener("scroll", this.scrollHandler, true);
+		activeDocument.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
+		activeDocument.addEventListener("keydown", this.keydownHandler, true);
+		activeDocument.addEventListener("scroll", this.scrollHandler, true);
 		window.addEventListener("resize", this.resizeHandler, true);
 	}
 
 	private detachGlobalListeners(): void {
 		if (this.outsidePointerDownHandler) {
-			document.removeEventListener("pointerdown", this.outsidePointerDownHandler, true);
+			activeDocument.removeEventListener("pointerdown", this.outsidePointerDownHandler, true);
 			this.outsidePointerDownHandler = null;
 		}
 		if (this.keydownHandler) {
-			document.removeEventListener("keydown", this.keydownHandler, true);
+			activeDocument.removeEventListener("keydown", this.keydownHandler, true);
 			this.keydownHandler = null;
 		}
 		if (this.scrollHandler) {
-			document.removeEventListener("scroll", this.scrollHandler, true);
+			activeDocument.removeEventListener("scroll", this.scrollHandler, true);
 			this.scrollHandler = null;
 		}
 		if (this.resizeHandler) {
@@ -327,14 +327,14 @@ export class PopoverEditor {
 			this.resizeHandler = null;
 		}
 		if (this.updateRafId !== null) {
-			cancelAnimationFrame(this.updateRafId);
+			window.cancelAnimationFrame(this.updateRafId);
 			this.updateRafId = null;
 		}
 	}
 
 	private schedulePopperUpdate(): void {
 		if (!this.popperInstance || this.updateRafId !== null) return;
-		this.updateRafId = requestAnimationFrame(() => {
+		this.updateRafId = window.requestAnimationFrame(() => {
 			this.updateRafId = null;
 			void this.popperInstance?.update();
 		});

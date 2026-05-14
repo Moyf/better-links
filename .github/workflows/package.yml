@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   package:
@@ -43,6 +45,14 @@ jobs:
           cp dist/styles.css release/styles.css
           cd release
           zip -r ../better-links-${{ github.ref_name }}.zip main.js manifest.json styles.css
+
+      - name: Attest build provenance
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release/main.js
+            release/styles.css
 
       - name: Prepare release notes from changelog
         if: startsWith(github.ref, 'refs/tags/')
