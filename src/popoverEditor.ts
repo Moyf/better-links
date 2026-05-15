@@ -56,13 +56,13 @@ export class PopoverEditor {
 	private updateRafId: number | null = null;
 	private isSuggestActiveChecker: (() => boolean) | null = null;
 	/** 当前 popover 挂载到的 document（可能是主窗口或 popout window） */
-	private currentDoc: Document = document;
+	private currentDoc: Document = activeDocument;
 
 	constructor(
 		private readonly events: PopoverEditorEvents,
 		private readonly t: PopoverTranslateFn,
 	) {
-		this.wrapperEl = document.body.createDiv({ cls: "better-links-popover-wrapper" });
+		this.wrapperEl = activeDocument.body.createDiv({ cls: "better-links-popover-wrapper" });
 		this.wrapperEl.hide();
 		this.rootEl = this.wrapperEl.createDiv({ cls: "better-links-popover" });
 
@@ -187,7 +187,7 @@ export class PopoverEditor {
 		/* 确定 popover 应该挂载到哪个窗口的 document（支持 popout window） */
 		const targetDoc = referenceEl instanceof Node
 			? referenceEl.doc
-			: interactionEl?.doc ?? document;
+			: interactionEl?.doc ?? activeDocument;
 		if (targetDoc !== this.currentDoc) {
 			this.currentDoc = targetDoc;
 			targetDoc.body.appendChild(this.wrapperEl);
@@ -317,7 +317,7 @@ export class PopoverEditor {
 		this.currentDoc.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
 		this.currentDoc.addEventListener("keydown", this.keydownHandler, true);
 		this.currentDoc.addEventListener("scroll", this.scrollHandler, true);
-		this.currentDoc.defaultView?.addEventListener("resize", this.resizeHandler!, true);
+		this.currentDoc.defaultView?.addEventListener("resize", this.resizeHandler, true);
 	}
 
 	private detachGlobalListeners(): void {

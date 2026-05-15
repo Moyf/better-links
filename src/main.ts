@@ -40,7 +40,7 @@ export default class BetterLinksPlugin extends Plugin {
 		});
 
 		// 为主窗口注册 document 级事件
-		this.registerDocumentEvents(document);
+		this.registerDocumentEvents(activeDocument);
 
 		// 为每个新打开的 popout window 注册同样的事件
 		this.registerEvent(
