@@ -626,7 +626,7 @@ export class LinkInterceptor {
 	}
 
 	private resolveReferenceElement(x: number, y: number, fallback: HTMLElement, markdownView: MarkdownView): HTMLElement {
-		const pointEl = activeDocument.elementFromPoint(x, y);
+		const pointEl = fallback.doc.elementFromPoint(x, y);
 		if (pointEl instanceof HTMLElement && markdownView.containerEl.contains(pointEl)) {
 			return pointEl;
 		}

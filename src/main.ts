@@ -39,70 +39,14 @@ export default class BetterLinksPlugin extends Plugin {
 			},
 		});
 
-		this.registerDomEvent(
-			activeDocument,
-			"click",
-			(event: MouseEvent) => {
-				void this.linkInterceptor.handleClick(event);
-			},
-			{ capture: true }
-		);
+		// 为主窗口注册 document 级事件
+		this.registerDocumentEvents(document);
 
-		this.registerDomEvent(
-			activeDocument,
-			"pointerdown",
-			(event: PointerEvent) => {
-				this.linkInterceptor.handlePointerDown(event);
-			},
-			{ capture: true }
-		);
-
-		// iOS WebView 上 pointerdown 的 preventDefault 不能阻止原生链接跳转，
-		// 需要额外监听 touchstart（capture）来补充拦截。
-		this.registerDomEvent(
-			activeDocument,
-			"touchstart",
-			(event: TouchEvent) => {
-				this.linkInterceptor.handleTouchStart(event);
-			},
-			{ capture: true, passive: false }
-		);
-
-		// touchmove：检测拖动手势，超过阈值时取消 touch 拦截，保留滚动行为
-		this.registerDomEvent(
-			activeDocument,
-			"touchmove",
-			(event: TouchEvent) => {
-				this.linkInterceptor.handleTouchMove(event);
-			},
-			{ capture: true, passive: true }
-		);
-
-		// touchend：touchstart 确认链接后，在 touchend 打开 popover
-		this.registerDomEvent(
-			activeDocument,
-			"touchend",
-			(event: TouchEvent) => {
-				this.linkInterceptor.handleTouchEnd(event);
-			},
-			{ capture: true }
-		);
-
-		this.registerDomEvent(
-			activeDocument,
-			"contextmenu",
-			(event: MouseEvent) => {
-				void this.linkInterceptor.handleContextMenu(event);
-			},
-			{ capture: true }
-		);
-
-		this.registerDomEvent(
-			activeDocument,
-			"mousemove",
-			(event: MouseEvent) => {
-				this.linkInterceptor.handleMouseMove(event);
-			},
+		// 为每个新打开的 popout window 注册同样的事件
+		this.registerEvent(
+			this.app.workspace.on("window-open", (_win, win) => {
+				this.registerDocumentEvents(win.document);
+			})
 		);
 
 		// hover 模式：popover 区域的鼠标事件（阻止离开时关闭）
@@ -135,6 +79,79 @@ export default class BetterLinksPlugin extends Plugin {
 	onunload(): void {
 		this.linkEditManager?.destroy();
 		this.linkInterceptor?.destroy();
+	}
+
+	/**
+	 * 将所有 document 级事件注册到指定 document 上。
+	 * 主窗口的 document 在 onload 调用，popout window 在 window-open 时调用。
+	 * registerDomEvent 会在 unload 时自动清理。
+	 */
+	private registerDocumentEvents(doc: Document): void {
+		this.registerDomEvent(
+			doc,
+			"click",
+			(event: MouseEvent) => {
+				void this.linkInterceptor.handleClick(event);
+			},
+			{ capture: true }
+		);
+
+		this.registerDomEvent(
+			doc,
+			"pointerdown",
+			(event: PointerEvent) => {
+				this.linkInterceptor.handlePointerDown(event);
+			},
+			{ capture: true }
+		);
+
+		// iOS WebView 上 pointerdown 的 preventDefault 不能阻止原生链接跳转，
+		// 需要额外监听 touchstart（capture）来补充拦截。
+		this.registerDomEvent(
+			doc,
+			"touchstart",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchStart(event);
+			},
+			{ capture: true, passive: false }
+		);
+
+		// touchmove：检测拖动手势，超过阈值时取消 touch 拦截，保留滚动行为
+		this.registerDomEvent(
+			doc,
+			"touchmove",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchMove(event);
+			},
+			{ capture: true, passive: true }
+		);
+
+		// touchend：touchstart 确认链接后，在 touchend 打开 popover
+		this.registerDomEvent(
+			doc,
+			"touchend",
+			(event: TouchEvent) => {
+				this.linkInterceptor.handleTouchEnd(event);
+			},
+			{ capture: true }
+		);
+
+		this.registerDomEvent(
+			doc,
+			"contextmenu",
+			(event: MouseEvent) => {
+				void this.linkInterceptor.handleContextMenu(event);
+			},
+			{ capture: true }
+		);
+
+		this.registerDomEvent(
+			doc,
+			"mousemove",
+			(event: MouseEvent) => {
+				this.linkInterceptor.handleMouseMove(event);
+			},
+		);
 	}
 
 	async loadSettings(): Promise<void> {

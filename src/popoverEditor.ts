@@ -55,12 +55,14 @@ export class PopoverEditor {
 	private resizeHandler: (() => void) | null = null;
 	private updateRafId: number | null = null;
 	private isSuggestActiveChecker: (() => boolean) | null = null;
+	/** 当前 popover 挂载到的 document（可能是主窗口或 popout window） */
+	private currentDoc: Document = document;
 
 	constructor(
 		private readonly events: PopoverEditorEvents,
 		private readonly t: PopoverTranslateFn,
 	) {
-		this.wrapperEl = activeDocument.body.createDiv({ cls: "better-links-popover-wrapper" });
+		this.wrapperEl = document.body.createDiv({ cls: "better-links-popover-wrapper" });
 		this.wrapperEl.hide();
 		this.rootEl = this.wrapperEl.createDiv({ cls: "better-links-popover" });
 
@@ -158,7 +160,7 @@ export class PopoverEditor {
 
 	/** 检查 popover 中是否有输入框获焦 */
 	hasInputFocus(): boolean {
-		return this.rootEl.contains(activeDocument.activeElement);
+		return this.rootEl.contains(this.currentDoc.activeElement);
 	}
 
 	updateEmbedState(isEmbedded: boolean): void {
@@ -182,6 +184,15 @@ export class PopoverEditor {
 	}
 
 	open(referenceEl: HTMLElement | VirtualElement, state: PopoverEditorState, interactionEl?: HTMLElement): void {
+		/* 确定 popover 应该挂载到哪个窗口的 document（支持 popout window） */
+		const targetDoc = referenceEl instanceof Node
+			? referenceEl.doc
+			: interactionEl?.doc ?? document;
+		if (targetDoc !== this.currentDoc) {
+			this.currentDoc = targetDoc;
+			targetDoc.body.appendChild(this.wrapperEl);
+		}
+
 		this.typeBadgeEl.setText(state.typeLabel);
 		this.displayInputEl.value = state.displayText;
 		this.destinationInputEl.value = state.destination;
@@ -303,27 +314,51 @@ export class PopoverEditor {
 			this.schedulePopperUpdate();
 		};
 
-		activeDocument.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
-		activeDocument.addEventListener("keydown", this.keydownHandler, true);
-		activeDocument.addEventListener("scroll", this.scrollHandler, true);
-		window.addEventListener("resize", this.resizeHandler, true);
+		this.currentDoc.addEventListener("pointerdown", this.outsidePointerDownHandler, true);
+		this.currentDoc.addEventListener("keydown", this.keydownHandler, true);
+		this.currentDoc.addEventListener("scroll", this.scrollHandler, true);
+		this.currentDoc.defaultView?.addEventListener("resize", this.resizeHandler!, true);
 	}
 
 	private detachGlobalListeners(): void {
 		if (this.outsidePointerDownHandler) {
-			activeDocument.removeEventListener("pointerdown", this.outsidePointerDownHandler, true);
+			this.currentDoc.removeEventListener("pointerdown", this.outsidePointerDownHandler, true);
 			this.outsidePointerDownHandler = null;
 		}
 		if (this.keydownHandler) {
-			activeDocument.removeEventListener("keydown", this.keydownHandler, true);
+			this.currentDoc.removeEventListener("keydown", this.keydownHandler, true);
 			this.keydownHandler = null;
 		}
 		if (this.scrollHandler) {
-			activeDocument.removeEventListener("scroll", this.scrollHandler, true);
+			this.currentDoc.removeEventListener("scroll", this.scrollHandler, true);
 			this.scrollHandler = null;
 		}
 		if (this.resizeHandler) {
-			window.removeEventListener("resize", this.resizeHandler, true);
+			this.currentDoc.defaultView?.removeEventListener("resize", this.resizeHandler, true);
+			this.resizeHandler = null;
+		}
+		if (this.keydownHandler) {
+			this.currentDoc.removeEventListener("keydown", this.keydownHandler, true);
+			this.keydownHandler = null;
+		}
+		if (this.scrollHandler) {
+			this.currentDoc.removeEventListener("scroll", this.scrollHandler, true);
+			this.scrollHandler = null;
+		}
+		if (this.resizeHandler) {
+			this.currentDoc.defaultView?.removeEventListener("resize", this.resizeHandler, true);
+			this.resizeHandler = null;
+		}
+		if (this.keydownHandler) {
+			this.currentDoc.removeEventListener("keydown", this.keydownHandler, true);
+			this.keydownHandler = null;
+		}
+		if (this.scrollHandler) {
+			this.currentDoc.removeEventListener("scroll", this.scrollHandler, true);
+			this.scrollHandler = null;
+		}
+		if (this.resizeHandler) {
+			this.currentDoc.defaultView?.removeEventListener("resize", this.resizeHandler, true);
 			this.resizeHandler = null;
 		}
 		if (this.updateRafId !== null) {

@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.6] - 2026-05-15
+
+### 🐛 Fixed
+
+- **Popout window support**: Fixed the plugin not working in popout (multi-window) windows. Events are now registered on each window's document via `window-open`, and the popover correctly mounts to the active window.
+
+### ⚡ Changed
+
+- **Vulnerable dev dependencies**: Pinned transitive dev dependencies (minimatch, ajv, flatted, brace-expansion, picomatch, yaml, fast-uri) to patched versions via pnpm overrides.
+
+<details>
+<summary> 点我查看中文更新日志</summary>
+
+### 🐛 修复
+
+- **弹出窗口支持**：修复插件在弹出（多窗口）窗口中不工作的问题。现在通过 `window-open` 事件为每个窗口的 document 注册事件，浮窗也会正确挂载到当前活动窗口。
+
+### ⚡ 变更
+
+- **开发依赖漏洞修复**：通过 pnpm overrides 将间接开发依赖（minimatch、ajv、flatted、brace-expansion、picomatch、yaml、fast-uri）固定到安全版本。
+
+</details>
+
+---
+
 ## [1.4.5] - 2026-05-14
 
 ### ⚡ Changed
