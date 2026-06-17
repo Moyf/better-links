@@ -25,9 +25,9 @@ const WIKILINK_PATTERN = /!?\[\[([^\]\r\n]+?)\]\]/g;
 const MARKDOWN_LINK_PATTERN = /!?\[([^\]\r\n]*)\]\(([^)\r\n]+)\)/g;
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"]+[^\s<>"),.;:!?]/g;
 
-export function findLinkAtOffset(lineText: string, offset: number, settings: BetterLinksSettings): RelativeLinkMatch | null {
+export function findLinkAtOffset(lineText: string, offset: number, settings: BetterLinksSettings, inclusiveEnd = false): RelativeLinkMatch | null {
 	const matches = collectMatches(lineText, settings);
-	return matches.find((match) => offset >= match.start && offset < match.end) ?? null;
+	return matches.find((match) => offset >= match.start && (inclusiveEnd ? offset <= match.end : offset < match.end)) ?? null;
 }
 
 /**

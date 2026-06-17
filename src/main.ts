@@ -39,6 +39,21 @@ export default class BetterLinksPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: "create-link-at-cursor",
+			name: this.t("commandCreateLink"),
+			checkCallback: (checking) => {
+				const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+				const canRun = !!view?.file && !this.linkEditManager.isOpen();
+				if (checking) {
+					return canRun;
+				}
+
+				this.linkEditManager.showAtCursor();
+				return true;
+			},
+		});
+
 		// 为主窗口注册 document 级事件
 		this.registerDocumentEvents(activeDocument);
 

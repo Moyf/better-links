@@ -15,6 +15,8 @@ export interface PopoverEditorState {
 	showEmbedToggle: boolean;
 	isEmbedded: boolean;
 	showCtrlClickHint: boolean;
+	/** 打开浮窗后默认聚焦哪个输入框（默认 "display"） */
+	focusTarget?: "display" | "destination";
 }
 
 export interface PopoverEditorEvents {
@@ -244,9 +246,15 @@ export class PopoverEditor {
 		});
 
 		this.attachGlobalListeners(interactionEl);
+		const focusTarget = state.focusTarget ?? "display";
 		window.setTimeout(() => {
-			this.displayInputEl.focus();
-			this.displayInputEl.select();
+			if (focusTarget === "destination") {
+				this.destinationInputEl.focus();
+				this.destinationInputEl.select();
+			} else {
+				this.displayInputEl.focus();
+				this.displayInputEl.select();
+			}
 		}, 0);
 	}
 

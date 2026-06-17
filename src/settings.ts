@@ -40,6 +40,8 @@ export interface BetterLinksSettings {
     triggerModifier?: TriggerModifier;
     /** 总是在编辑窗显示 displayText（含自动推导的默认值） */
     alwaysShowDisplayText?: boolean;
+    /** 通过命令在光标处插入新链接时，是否自动在 [[link]] 两侧补空格 */
+    padNewLinkWithSpaces?: boolean;
     /** 非 click 触发模式下，是否禁用左键点击链接的原生跳转行为 */
     disableNativeClick?: boolean;
     /** 排除特定链接的模式（disabled = 不排除） */
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     triggerMethod: "hover",
     triggerModifier: "none",
     alwaysShowDisplayText: false,
+    padNewLinkWithSpaces: true,
     disableNativeClick: false,
     excludeMode: "disabled",
     excludeKeywords: ".base, .canvas",

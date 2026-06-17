@@ -1,13 +1,21 @@
 import { MarkdownView, Notice } from "obsidian";
+import type { EditorPosition } from "obsidian";
 import type { VirtualElement } from "@popperjs/core";
+import { EditorView } from "@codemirror/view";
 import type BetterLinksPlugin from "./main";
 import { copyMarkdown, copyUrl, buildDeletionText, normalizeEditableValues, openLink, shouldUseWikiLinkFormat } from "./linkActions";
-import { isLikelyExternalDestination, isLikelyInternalDestination, serializeEditedLink, type EditorLinkMatch } from "./linkDetector";
+import { isLikelyExternalDestination, isLikelyInternalDestination, serializeEditedLink, findLinkAtOffset, withEditorRange, type EditorLinkMatch } from "./linkDetector";
 import { PopoverEditor } from "./popoverEditor";
 import { LinkDestinationSuggest } from "./linkSuggest";
 
 interface ActiveSession {
 	match: EditorLinkMatch;
+	/** 关闭浮窗时编辑器光标应该落在哪里。
+	 *  - 编辑现有链接：默认放到链接末尾（match.range.to），方便继续编辑
+	 *  - 新建链接：插入成功后放到新文本末尾；丢弃时回到原起始位置 */
+	cursorOnClose: EditorPosition;
+	/** 标识本会话是否为"在光标处插入新链接"流程 */
+	isNew: boolean;
 }
 
 export class LinkEditManager {
@@ -101,7 +109,12 @@ export class LinkEditManager {
 		this.cancelPendingValidation();
 		this.suggest.close();
 		this.destinationInvalid = false;
-		this.activeSession = { match };
+		this.activeSession = {
+			match,
+			// 编辑现有链接：默认把光标放到链接末尾
+			cursorOnClose: { ...match.range.to },
+			isNew: false,
+		};
 		const isImage = match.type === "imageWiki" || match.type === "imageMarkdown";
 		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(match);
 		const isEmbedded = match.originalText.startsWith("!");
@@ -139,6 +152,103 @@ export class LinkEditManager {
 		}
 	}
 
+	/**
+	 * 命令触发：在当前光标位置弹出浮窗。
+	 * - 光标处有链接 → 弹出编辑该链接的 popup（等同点击链接效果）
+	 * - 光标处无链接 → 弹出新建链接的 popup，聚焦"URL 或笔记路径"输入框
+	 *
+	 * @returns 是否成功弹出（无活动编辑器时返回 false）
+	 */
+	showAtCursor(): boolean {
+		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!markdownView?.file) {
+			new Notice(this.plugin.t("noticeNoActiveEditor"));
+			return false;
+		}
+
+		const editor = markdownView.editor;
+		const cursor = editor.getCursor();
+
+		// 找到 CM6 EditorView（坐标 + 链接锚点都需要）
+		const cmEditorEl = markdownView.containerEl.querySelector(".cm-editor");
+		if (!(cmEditorEl instanceof HTMLElement)) {
+			new Notice(this.plugin.t("noticeNoActiveEditor"));
+			return false;
+		}
+		const editorView = EditorView.findFromDOM(cmEditorEl);
+		if (!editorView) {
+			new Notice(this.plugin.t("noticeNoActiveEditor"));
+			return false;
+		}
+
+		const lineFrom = editorView.state.doc.line(cursor.line + 1).from;
+		const cursorOffset = lineFrom + cursor.ch;
+		const referenceEl = createCursorVirtualReference(editorView, cursorOffset);
+
+		// 探测光标处是否有链接（inclusiveEnd=true：紧贴链接右侧也视为在链接内）
+		const lineText = editor.getLine(cursor.line);
+		const relMatch = findLinkAtOffset(lineText, cursor.ch, this.plugin.settings, true);
+
+		if (relMatch) {
+			// ── 有链接：编辑模式 ────────────────────────────────────────────
+			const editorMatch = withEditorRange(relMatch, cursor.line, markdownView.file.path);
+			this.show(editorMatch, referenceEl);
+			return true;
+		}
+
+		// ── 无链接：新建模式 ────────────────────────────────────────────────
+		const useWiki = shouldUseWikiLinkFormat(this.plugin.app);
+		const placeholder: EditorLinkMatch = {
+			type: useWiki ? "wiki" : "markdown",
+			start: cursor.ch,
+			end: cursor.ch,
+			originalText: "",
+			displayText: "",
+			destination: "",
+			hasExplicitDisplayText: false,
+			range: {
+				from: { line: cursor.line, ch: cursor.ch },
+				to: { line: cursor.line, ch: cursor.ch },
+			},
+			sourcePath: markdownView.file.path,
+		};
+
+		this.cancelPendingValidation();
+		this.suggest.close();
+		this.destinationInvalid = false;
+		this.activeSession = {
+			match: placeholder,
+			cursorOnClose: { line: cursor.line, ch: cursor.ch },
+			isNew: true,
+		};
+
+		const showCtrlClickHint = (this.plugin.settings.triggerMethod ?? "hover") === "click"
+			&& (this.plugin.settings.triggerModifier ?? "none") === "none";
+		const showEmbedToggle = !!(this.plugin.settings.showEmbedToggle) && canToggleEmbed(placeholder);
+
+		this.popoverEditor.open(referenceEl, {
+			displayText: "",
+			destination: "",
+			typeLabel: linkTypeLabel(placeholder.type, this.plugin),
+			isImage: false,
+			isInternal: useWiki,
+			copyMarkdownLabel: copyMarkdownLabel(placeholder, this.plugin),
+			copyUrlLabel: copyUrlLabel(placeholder, this.plugin),
+			copyUrlIcon: copyUrlIcon(placeholder),
+			showDelete: false,
+			showEmbedToggle,
+			isEmbedded: false,
+			showCtrlClickHint,
+			focusTarget: "destination",
+		});
+
+		if (this.plugin.settings.enableLinkSuggestions ?? true) {
+			this.suggest.updateContext(placeholder.sourcePath, this.plugin.settings);
+		}
+
+		return true;
+	}
+
 	close(): void {
 		this.saveAndClose();
 	}
@@ -152,39 +262,66 @@ export class LinkEditManager {
 
 	/** Auto-save current edits then close the popover. */
 	private saveAndClose(): void {
+		const cursorTarget = this.activeSession ? { ...this.activeSession.cursorOnClose } : null;
 		if (this.activeSession && this.popoverEditor.isOpen()) {
 			const { displayText, destination } = this.popoverEditor.getValues();
 			const silent = !this.destinationInvalid;
 			this.save(displayText, destination, silent);
 		}
+		// save() 可能更新了 cursorOnClose（成功插入时落在新文本末尾），优先使用更新后的值
+		const finalCursor = this.activeSession?.cursorOnClose ?? cursorTarget;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
+		if (finalCursor) {
+			this.restoreEditorFocus(finalCursor);
+		}
 	}
 
 	/** 强制保存（跳过校验）并关闭。 */
 	private forceSaveAndClose(): void {
+		const cursorTarget = this.activeSession ? { ...this.activeSession.cursorOnClose } : null;
 		if (this.activeSession && this.popoverEditor.isOpen()) {
 			const { displayText, destination } = this.popoverEditor.getValues();
 			this.destinationInvalid = false;
 			this.save(displayText, destination, true);
 		}
+		const finalCursor = this.activeSession?.cursorOnClose ?? cursorTarget;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
+		if (finalCursor) {
+			this.restoreEditorFocus(finalCursor);
+		}
 	}
 
 	/** 丢弃编辑，直接关闭（ESC 触发）。 */
 	private discardAndClose(): void {
+		// ESC 不修改文档：
+		//  - 编辑现有链接 → 光标放在链接末尾，方便继续打字
+		//  - 新建场景 → 光标回到原起始位置（cursorOnClose 默认值已设好）
+		const finalCursor = this.activeSession ? { ...this.activeSession.cursorOnClose } : null;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
+		if (finalCursor) {
+			this.restoreEditorFocus(finalCursor);
+		}
+	}
+
+	/** 关闭浮窗后把焦点交还给编辑器并把光标放在指定位置，避免打断编辑流。 */
+	private restoreEditorFocus(cursor: EditorPosition): void {
+		const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		const editor = markdownView?.editor;
+		if (!editor) return;
+		editor.focus();
+		editor.setCursor(cursor);
 	}
 
 	private save(displayText: string, destination: string, silent = false): void {
@@ -199,15 +336,37 @@ export class LinkEditManager {
 			return;
 		}
 
+		// 新建链接场景（originalText 为空）：destination 为空时不插入任何内容
+		if (session.isNew && destination.trim().length === 0) {
+			return;
+		}
+
 		const nextText = serializeEditedLink(session.match, displayText, destination, {
 			preferWikiLink: shouldUseWikiLinkFormat(this.plugin.app),
 		});
 		if (nextText === session.match.originalText) return; // no change
 
+		// 新建场景：根据设置决定是否在两侧补空格，并计算插入后光标应在的位置（落在 trailing pad 之后）
+		let replacement = nextText;
+		if (session.isNew) {
+			const padded = padIfNewLink(nextText, session.match.range.from, this.plugin);
+			replacement = padded.text;
+			session.cursorOnClose = {
+				line: session.match.range.from.line,
+				ch: session.match.range.from.ch + padded.cursorOffsetWithin,
+			};
+		} else {
+			// 编辑现有链接：光标落在替换后的文本末尾
+			session.cursorOnClose = {
+				line: session.match.range.from.line,
+				ch: session.match.range.from.ch + replacement.length,
+			};
+		}
+
 		session.match.destination = destination.trim();
 		session.match.displayText = displayText.trim();
-		session.match.originalText = nextText;
-		this.replaceActiveRange(nextText);
+		session.match.originalText = nextText; // 保留 nextText 不含 padding 作为 link 本体
+		this.replaceActiveRange(replacement);
 		if (!silent) {
 			new Notice(this.plugin.t("noticeLinkUpdated"));
 		}
@@ -479,4 +638,68 @@ function rebuildWithEmbedPrefix(match: EditorLinkMatch, displayText: string, des
 
 	// markdown / imageMarkdown
 	return `${prefix}[${disp}](${dest})`;
+}
+
+/**
+ * 构造一个锚定到光标位置（0 长度区间）的 Popper VirtualElement。
+ * 与 linkInterceptor.ts 的 createVirtualReference 思路一致，但简化为单点：
+ * 始终用 coordsAtPos(offset) 的结果做 1px 矩形，让 popper 把浮窗放在光标旁。
+ */
+function createCursorVirtualReference(editorView: EditorView, offset: number): VirtualElement {
+	let lastRect = new DOMRect(0, 0, 1, 1);
+	return {
+		contextElement: editorView.dom,
+		getBoundingClientRect: () => {
+			const pos = editorView.coordsAtPos(offset);
+			if (pos) {
+				lastRect = new DOMRect(pos.left, pos.top, 1, Math.max(1, pos.bottom - pos.top));
+			}
+			return lastRect;
+		},
+	};
+}
+
+/**
+ * 新建链接场景：根据设置在 linkText 两侧补空格（仅当邻接字符不是空白/标点时补）。
+ *
+ * 返回：
+ *  - text: 实际要写入文档的文本（含可能的前后空格）
+ *  - cursorOffsetWithin: 写入后光标相对 text 起始的偏移量
+ *    - 若有 trailing pad → 落在 trailing pad 之后（即 text 长度）
+ *    - 若没有 trailing pad → 落在 linkText 之后（也是 text 长度）
+ *    实际两种情况都是 text.length，调用方按这个偏移把光标放好。
+ */
+function padIfNewLink(linkText: string, insertAt: EditorPosition, plugin: BetterLinksPlugin): { text: string; cursorOffsetWithin: number } {
+	const enabled = plugin.settings.padNewLinkWithSpaces ?? true;
+	if (!enabled) {
+		return { text: linkText, cursorOffsetWithin: linkText.length };
+	}
+
+	const markdownView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+	const editor = markdownView?.editor;
+	if (!editor) {
+		return { text: linkText, cursorOffsetWithin: linkText.length };
+	}
+
+	const lineText = editor.getLine(insertAt.line);
+	const charBefore = insertAt.ch > 0 ? lineText.charAt(insertAt.ch - 1) : "";
+	const charAfter = insertAt.ch < lineText.length ? lineText.charAt(insertAt.ch) : "";
+
+	const leftPad = charBefore && !isAdjacentBoundaryChar(charBefore) ? " " : "";
+	const rightPad = charAfter && !isAdjacentBoundaryChar(charAfter) ? " " : "";
+	const text = `${leftPad}${linkText}${rightPad}`;
+	return { text, cursorOffsetWithin: text.length };
+}
+
+/**
+ * 判断字符是否为"邻接边界"，即不需要再补空格。
+ * 包括：空白、中英常用标点（句末标点、引号、括号等）。
+ */
+function isAdjacentBoundaryChar(ch: string): boolean {
+	if (/\s/.test(ch)) return true;
+	// ASCII 标点
+	if (/[.,;:!?\-)\]}>"'`/]/.test(ch)) return true;
+	// 中文常用全角标点
+	if (/[，。；：！？、）】》」』""'']/.test(ch)) return true;
+	return false;
 }
