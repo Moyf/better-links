@@ -10,32 +10,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### ✨ Added
 
-- **Insert or edit link at cursor** (command): new command `Insert or edit link at cursor`. When the cursor is on or immediately after a link, opens the edit popup for that link. Otherwise opens a new-link popup with the destination input focused — select a note from the suggestion list or type a URL, press Enter to insert. The link is anchored to the cursor position via a virtual reference element so the popover appears right where you are.
-- **Auto-pad new links with spaces** (setting, on by default): when inserting a new link via the command, a space is automatically added on either side if the adjacent character is not already whitespace or punctuation. The cursor lands after the trailing space so you can keep typing immediately. Covers common ASCII and CJK punctuation.
-- **Embed toggle on new-link popup**: the embed toggle button (if enabled in settings) now also appears when creating a new link via the command.
+- **Insert or edit link at cursor** (command): new command `Insert or edit link at cursor`. When the cursor is on or immediately after a link, opens the edit popup for that link. Otherwise opens a new-link popup with the destination input focused — select a note from the suggestion list or type a URL, press Enter to insert. A space is automatically padded on either side of the inserted link when the adjacent character is not already whitespace or punctuation (configurable, on by default).
 
 ### ✨ Improved
 
-- **Search by aliases in link suggestions**: the destination suggestion dropdown now also matches against frontmatter `aliases`. When a result is found via an alias, the alias is shown as the title (with fuzzy highlight) and `basename · folder` is shown below. Selecting such a result fills the display text with that alias. Supports `aliases: string`, `aliases: [array]`, and the singular `alias:` field. No new setting needed — it mirrors Obsidian's native `[[` autocomplete behavior.
-- **Plain URL delete without Ctrl**: clicking the delete button on a bare URL (`type: url`) now removes it entirely without needing Ctrl/Cmd. Plain URLs have no display text to preserve, so the default "preserve text" behavior was counterintuitive. Wiki/Markdown/image links are unchanged.
-- **Editor focus restored after popup closes**: all close paths (Enter/click-away save, force-save, ESC discard) now return focus to the editor and place the cursor at a sensible position — link end for existing-link edits, inserted text end (including trailing space) for new links, original cursor position when discarding or leaving destination empty.
-- **Cursor just past `]]` triggers edit mode**: `[[note]]⬇️` now correctly opens the edit popup for that link. Previously `offset < end` missed the closing bracket position. A new `inclusiveEnd` option on `findLinkAtOffset` handles this (default behavior unchanged for all other callers).
+- **Search by aliases in link suggestions**: the destination suggestion dropdown now also matches against frontmatter `aliases`. When a result is found via an alias, the alias is shown as the title (with fuzzy highlight) and `basename · folder` is shown below. Selecting such a result fills the display text with that alias. Supports `aliases: string`, `aliases: [array]`, and the singular `alias:` field.
+- **Plain URL delete without Ctrl**: clicking the delete button on a bare URL now removes it entirely without needing Ctrl/Cmd. Plain URLs have no display text worth preserving, so the default "preserve text" behavior was counterintuitive. Wiki/Markdown/image links are unchanged.
+- **Editor focus restored after popup closes**: all close paths (save, force-save, ESC discard) now return focus to the editor and place the cursor at a sensible position — link end for edits, after the inserted text for new links, original position when discarding.
 
 <details>
 <summary> 点我查看中文更新日志</summary>
 
 ### ✨ 新增
 
-- **在光标处插入或编辑链接**（命令）：新增命令「插入或编辑链接」。光标位于链接内或紧贴链接右侧时，弹出该链接的编辑浮窗；否则弹出新建链接浮窗，自动聚焦目标输入框——从建议列表选笔记或直接输入 URL，Enter 即插入。浮窗通过虚拟锚点定位到光标位置。
-- **新建链接自动补空格**（设置，默认开启）：通过命令插入新链接时，若两侧字符不是空白或标点，自动补一个空格，光标落在右侧空格之后，方便继续打字。支持 ASCII 及中文常用标点。
-- **新建链接浮窗显示嵌入切换按钮**：通过命令新建链接时，若设置中启用了嵌入切换按钮，浮窗中同样显示该按钮。
+- **在光标处插入或编辑链接**（命令）：新增命令「插入或编辑链接」。光标位于链接内或紧贴链接右侧时，弹出该链接的编辑浮窗；否则弹出新建链接浮窗，自动聚焦目标输入框——从建议列表选笔记或直接输入 URL，Enter 即插入。若两侧字符不是空白或标点，自动补空格（可在设置中关闭，默认开启）。
 
 ### ✨ 优化
 
-- **链接建议支持别名检索**：目标输入框的自动补全现在同时匹配 frontmatter `aliases`。通过别名命中的结果，主行显示别名（含模糊高亮），副行显示 `basename · folder`；选中后 displayText 自动填入该别名。兼容 `aliases: 字符串`、`aliases: [数组]`、单数 `alias:` 三种写法。无需新增设置——与 Obsidian 原生 `[[` 补全行为一致。
-- **纯 URL 删除不再需要 Ctrl**：对于裸 URL 链接（`type: url`），点击删除按钮即直接整段移除，无需按 Ctrl/Cmd。纯 URL 没有显示文本可保留，原「保留文本」模式下留下的仍是 URL 本身，不符合直觉。WikiLink / Markdown / 图片链接行为不变。
-- **关闭浮窗后自动还原编辑器焦点**：所有关闭路径（Enter / 点击外部保存、强制保存、ESC 放弃）均会将焦点交还编辑器，并将光标定位到合适位置——编辑现有链接时落在链接末尾，新建链接成功时落在插入文本末尾（含尾部空格），放弃操作或目标为空时回到原光标位置。
-- **紧贴 `]]` 右侧也能触发编辑**：`[[note]]⬇️` 现在能正确弹出编辑浮窗。之前 `offset < end` 的判断会漏掉右括号位置。`findLinkAtOffset` 新增 `inclusiveEnd` 参数（其它所有调用处默认行为不变）。
+- **链接建议支持别名检索**：目标输入框的自动补全现在同时匹配 frontmatter `aliases`。通过别名命中的结果，主行显示别名（含模糊高亮），副行显示 `basename · folder`；选中后 displayText 自动填入该别名。兼容 `aliases: 字符串`、`aliases: [数组]`、单数 `alias:` 三种写法。
+- **纯 URL 删除不再需要 Ctrl**：对于裸 URL 链接，点击删除按钮即直接整段移除，无需按 Ctrl/Cmd。纯 URL 没有显示文本可保留，原「保留文本」模式下留下的仍是 URL 本身，不符合直觉。WikiLink / Markdown / 图片链接行为不变。
+- **关闭浮窗后自动还原编辑器焦点**：所有关闭路径（保存、强制保存、ESC 放弃）均会将焦点交还编辑器，并将光标定位到合适位置——编辑现有链接时落在链接末尾，新建链接成功时落在插入文本之后，放弃操作时回到原光标位置。
 
 </details>
 
