@@ -8,6 +8,9 @@ type FileSuggestion = {
 	kind: "file";
 	file: TFile;
 	match: SearchResult | null;
+	/** 当本条建议是通过 alias 命中时，这里记录命中的那个 alias 字符串。
+	 *  此时 match 是对 alias 的 fuzzy 结果（用于主标题高亮）。 */
+	matchedAlias?: string;
 };
 
 type HeadingSuggestion = {
@@ -122,24 +125,40 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 
 	private renderFileSuggestion(item: FileSuggestion, el: HTMLElement): void {
 		const isMarkdown = item.file.extension === "md";
-		const displayName = isMarkdown ? item.file.basename : item.file.name; // name 含后缀
+		const basenameDisplay = isMarkdown ? item.file.basename : item.file.name; // name 含后缀
 		const folder = item.file.parent?.path ?? "";
 
 		if (!isMarkdown) {
 			el.addClass("better-links-suggest__item--non-md");
 		}
 
-		// 主行：文件名（含高亮；非 md 显示完整 name 含后缀）
 		const titleEl = el.createDiv({ cls: "better-links-suggest__title" });
-		if (item.match && item.match.matches.length > 0) {
-			const basenameMatch = recomputeMatchForBasename(item.file.path, displayName, item.match);
-			if (basenameMatch) {
-				renderResults(titleEl, displayName, basenameMatch);
+
+		if (item.matchedAlias !== undefined) {
+			// 通过 alias 命中：主行显示 alias（高亮），副行显示 basename + folder
+			el.addClass("better-links-suggest__item--alias");
+			if (item.match && item.match.matches.length > 0) {
+				renderResults(titleEl, item.matchedAlias, item.match);
 			} else {
-				titleEl.setText(displayName);
+				titleEl.setText(item.matchedAlias);
+			}
+
+			// 副行：basename — folder（用 emdash / 中点分隔；这里用 "·"）
+			const subText = folder && folder !== "/" ? `${basenameDisplay} · ${folder}` : basenameDisplay;
+			el.createDiv({ cls: "better-links-suggest__path", text: subText });
+			return;
+		}
+
+		// 主行：文件名（含高亮；非 md 显示完整 name 含后缀）
+		if (item.match && item.match.matches.length > 0) {
+			const basenameMatch = recomputeMatchForBasename(item.file.path, basenameDisplay, item.match);
+			if (basenameMatch) {
+				renderResults(titleEl, basenameDisplay, basenameMatch);
+			} else {
+				titleEl.setText(basenameDisplay);
 			}
 		} else {
-			titleEl.setText(displayName);
+			titleEl.setText(basenameDisplay);
 		}
 
 		// 副行：文件夹路径（小字）
@@ -180,6 +199,10 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		const sep = this.settings.aliasSeparator ?? " > ";
 
 		if (item.kind === "file") {
+			// 通过 frontmatter alias 命中：直接用该 alias 作 displayText
+			if (item.matchedAlias !== undefined) {
+				return item.matchedAlias;
+			}
 			// 选中的是文件（无标题），别名为文件的展示名
 			const fileName = this.getDisplayName(item.file);
 			return fileName;
@@ -265,14 +288,49 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 			// 同时对 path 和 basename 做匹配，取更高分
 			const matchPath = search(file.path);
 			const matchBasename = search(file.basename);
-			const match = betterMatch(matchPath, matchBasename);
-			if (match) {
-				results.push({ kind: "file", file, match });
+			const nameMatch = betterMatch(matchPath, matchBasename);
+
+			// 通过 metadataCache 检索 aliases，挑出分数最高的命中 alias
+			const aliasHit = this.findBestAliasMatch(file, search);
+
+			// 命中 alias 且分数 ≥ basename/path 命中：作为 alias 命中条目展示
+			// 否则若 path/basename 命中：作为普通文件命中
+			if (aliasHit && (!nameMatch || aliasHit.match.score > nameMatch.score)) {
+				results.push({
+					kind: "file",
+					file,
+					match: aliasHit.match,
+					matchedAlias: aliasHit.alias,
+				});
+			} else if (nameMatch) {
+				results.push({ kind: "file", file, match: nameMatch });
 			}
 		}
 
 		results.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
 		return results.slice(0, MAX_SUGGESTIONS);
+	}
+
+	/**
+	 * 从文件 frontmatter.aliases 中找出与 query 最佳匹配的别名。
+	 * aliases 字段允许是 string 或 string[]（OB 标准）。
+	 */
+	private findBestAliasMatch(
+		file: TFile,
+		search: (text: string) => SearchResult | null,
+	): { alias: string; match: SearchResult } | null {
+		const aliases = readAliases(this.app.metadataCache.getFileCache(file)?.frontmatter);
+		if (aliases.length === 0) return null;
+
+		let best: { alias: string; match: SearchResult } | null = null;
+		for (const alias of aliases) {
+			const m = search(alias);
+			if (!m) continue;
+			if (!best || m.score > best.match.score) {
+				best = { alias, match: m };
+			}
+		}
+		return best;
 	}
 
 	private getHeadingSuggestions(query: string, hashIndex: number): LinkSuggestion[] {
@@ -338,4 +396,26 @@ function recomputeMatchForBasename(
 
 	if (shifted.length === 0) return null;
 	return { score: result.score, matches: shifted };
+}
+
+/**
+ * 从 frontmatter 中读取 aliases，规范化为字符串数组。
+ * OB 允许 aliases 是 string 或 string[]，也兼容 alias 单数键。
+ */
+function readAliases(frontmatter: Record<string, unknown> | undefined): string[] {
+	if (!frontmatter) return [];
+	const raw = frontmatter.aliases ?? frontmatter.alias;
+	const out: string[] = [];
+	if (typeof raw === "string") {
+		const v = raw.trim();
+		if (v) out.push(v);
+	} else if (Array.isArray(raw)) {
+		for (const item of raw) {
+			if (typeof item === "string") {
+				const v = item.trim();
+				if (v) out.push(v);
+			}
+		}
+	}
+	return out;
 }

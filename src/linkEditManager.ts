@@ -240,10 +240,16 @@ export class LinkEditManager {
 			return;
 		}
 
+		// 纯 URL（plain link，无显式 display text）：删除即整段移除，无需 Ctrl
+		// 因为对于裸 URL 来说没有显示文本可以保留，preserve-text 模式会保留 URL 本身
+		// 这与"删除"的直觉相悖，所以直接整段删除。
+		const isPlainUrl = session.match.type === "url";
+		const removeAll = forceRemoveAll || isPlainUrl;
+
 		let replacement: string;
 		let noticeKey: "noticeLinkRemoved" | "noticeLinkRemovedAll";
 
-		if (forceRemoveAll) {
+		if (removeAll) {
 			replacement = "";
 			noticeKey = "noticeLinkRemovedAll";
 		} else {
@@ -252,7 +258,7 @@ export class LinkEditManager {
 		}
 
 		// 记录链接起始位置，完全移除时用于恢复光标
-		const cursorPos = forceRemoveAll ? { ...session.match.range.from } : null;
+		const cursorPos = removeAll ? { ...session.match.range.from } : null;
 
 		this.replaceActiveRange(replacement);
 
