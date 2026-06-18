@@ -16,6 +16,8 @@ interface ActiveSession {
 	cursorOnClose: EditorPosition;
 	/** 标识本会话是否为"在光标处插入新链接"流程 */
 	isNew: boolean;
+	/** 新建链接时若存在选中文本，记录原始选区，用于丢弃时恢复选中状态。 */
+	selectionOnClose?: { anchor: EditorPosition; head: EditorPosition };
 }
 
 export class LinkEditManager {
@@ -197,18 +199,29 @@ export class LinkEditManager {
 		}
 
 		// ── 无链接：新建模式 ────────────────────────────────────────────────
+		// 若存在选中文本，则把选区作为链接的目标范围，并把选中文本预填到 destination 输入框。
+		const hasSelection = editor.somethingSelected();
+		const selectionRange = hasSelection ? editor.listSelections()[0] : null;
+		const selectedText = hasSelection ? editor.getSelection() : "";
+		// 归一化选区：from 始终在 to 之前
+		const selectionBounds = selectionRange
+			? normalizeSelection(selectionRange.anchor, selectionRange.head)
+			: null;
+
 		const useWiki = shouldUseWikiLinkFormat(this.plugin.app);
+		const linkFrom: EditorPosition = selectionBounds ? { ...selectionBounds.from } : { line: cursor.line, ch: cursor.ch };
+		const linkTo: EditorPosition = selectionBounds ? { ...selectionBounds.to } : { line: cursor.line, ch: cursor.ch };
 		const placeholder: EditorLinkMatch = {
 			type: useWiki ? "wiki" : "markdown",
-			start: cursor.ch,
-			end: cursor.ch,
+			start: linkFrom.ch,
+			end: linkTo.ch,
 			originalText: "",
 			displayText: "",
 			destination: "",
 			hasExplicitDisplayText: false,
 			range: {
-				from: { line: cursor.line, ch: cursor.ch },
-				to: { line: cursor.line, ch: cursor.ch },
+				from: { ...linkFrom },
+				to: { ...linkTo },
 			},
 			sourcePath: markdownView.file.path,
 		};
@@ -218,8 +231,12 @@ export class LinkEditManager {
 		this.destinationInvalid = false;
 		this.activeSession = {
 			match: placeholder,
-			cursorOnClose: { line: cursor.line, ch: cursor.ch },
+			cursorOnClose: { ...linkFrom },
 			isNew: true,
+			// 有选区时记录原始选区，丢弃时恢复
+			selectionOnClose: selectionBounds
+				? { anchor: { ...selectionBounds.from }, head: { ...selectionBounds.to } }
+				: undefined,
 		};
 
 		const showCtrlClickHint = (this.plugin.settings.triggerMethod ?? "hover") === "click"
@@ -228,7 +245,7 @@ export class LinkEditManager {
 
 		this.popoverEditor.open(referenceEl, {
 			displayText: "",
-			destination: "",
+			destination: selectedText,
 			typeLabel: linkTypeLabel(placeholder.type, this.plugin),
 			isImage: false,
 			isInternal: useWiki,
@@ -241,6 +258,11 @@ export class LinkEditManager {
 			showCtrlClickHint,
 			focusTarget: "destination",
 		});
+
+		// 预填了 destination 时，主动触发一次校验，保证警告状态与内容同步
+		if (selectedText.trim().length > 0) {
+			this.scheduleValidation(selectedText);
+		}
 
 		if (this.plugin.settings.enableLinkSuggestions ?? true) {
 			this.suggest.updateContext(placeholder.sourcePath, this.plugin.settings);
@@ -270,14 +292,14 @@ export class LinkEditManager {
 		}
 		// save() 可能更新了 cursorOnClose（成功插入时落在新文本末尾），优先使用更新后的值
 		const finalCursor = this.activeSession?.cursorOnClose ?? cursorTarget;
+		// save() 成功创建链接后会清空 selectionOnClose；若仍存在说明未创建，需恢复选区
+		const finalSelection = this.activeSession?.selectionOnClose ?? null;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
-		if (finalCursor) {
-			this.restoreEditorFocus(finalCursor);
-		}
+		this.restoreEditorState(finalCursor, finalSelection);
 	}
 
 	/** 强制保存（跳过校验）并关闭。 */
@@ -289,29 +311,51 @@ export class LinkEditManager {
 			this.save(displayText, destination, true);
 		}
 		const finalCursor = this.activeSession?.cursorOnClose ?? cursorTarget;
+		const finalSelection = this.activeSession?.selectionOnClose ?? null;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
-		if (finalCursor) {
-			this.restoreEditorFocus(finalCursor);
-		}
+		this.restoreEditorState(finalCursor, finalSelection);
 	}
 
 	/** 丢弃编辑，直接关闭（ESC 触发）。 */
 	private discardAndClose(): void {
 		// ESC 不修改文档：
 		//  - 编辑现有链接 → 光标放在链接末尾，方便继续打字
-		//  - 新建场景 → 光标回到原起始位置（cursorOnClose 默认值已设好）
+		//  - 新建场景（无选区）→ 光标回到原起始位置（cursorOnClose 默认值已设好）
+		//  - 新建场景（有选区）→ 恢复原始选中文本状态
 		const finalCursor = this.activeSession ? { ...this.activeSession.cursorOnClose } : null;
+		const finalSelection = this.activeSession?.selectionOnClose ?? null;
 		this.cancelPendingValidation();
 		this.closeSuggest();
 		this.destinationInvalid = false;
 		this.activeSession = null;
 		this.popoverEditor.close();
-		if (finalCursor) {
-			this.restoreEditorFocus(finalCursor);
+		this.restoreEditorState(finalCursor, finalSelection);
+	}
+
+	/**
+	 * 关闭浮窗后把焦点交还给编辑器：
+	 *  - 若有待恢复的选区 → 恢复选中文本状态
+	 *  - 否则把光标放到指定位置
+	 */
+	private restoreEditorState(
+		cursor: EditorPosition | null,
+		selection: { anchor: EditorPosition; head: EditorPosition } | null,
+	): void {
+		if (selection) {
+			const markdownView = this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			const editor = markdownView?.editor;
+			if (editor) {
+				editor.focus();
+				editor.setSelection(selection.anchor, selection.head);
+				return;
+			}
+		}
+		if (cursor) {
+			this.restoreEditorFocus(cursor);
 		}
 	}
 
@@ -349,12 +393,17 @@ export class LinkEditManager {
 		// 新建场景：根据设置决定是否在两侧补空格，并计算插入后光标应在的位置（落在 trailing pad 之后）
 		let replacement = nextText;
 		if (session.isNew) {
-			const padded = padIfNewLink(nextText, session.match.range.from, this.plugin);
+			// 替换选中文本时不补空格：选区两侧的邻接关系已由原文本确定
+			const padded = session.selectionOnClose
+				? { text: nextText, cursorOffsetWithin: nextText.length }
+				: padIfNewLink(nextText, session.match.range.from, this.plugin);
 			replacement = padded.text;
 			session.cursorOnClose = {
 				line: session.match.range.from.line,
 				ch: session.match.range.from.ch + padded.cursorOffsetWithin,
 			};
+			// 已成功创建链接，丢弃时不再恢复选区
+			session.selectionOnClose = undefined;
 		} else {
 			// 编辑现有链接：光标落在替换后的文本末尾
 			session.cursorOnClose = {
@@ -657,6 +706,14 @@ function createCursorVirtualReference(editorView: EditorView, offset: number): V
 			return lastRect;
 		},
 	};
+}
+
+/**
+ * 归一化选区：返回 from 在前、to 在后的边界（行号优先，其次列号）。
+ */
+function normalizeSelection(anchor: EditorPosition, head: EditorPosition): { from: EditorPosition; to: EditorPosition } {
+	const anchorBeforeHead = anchor.line < head.line || (anchor.line === head.line && anchor.ch <= head.ch);
+	return anchorBeforeHead ? { from: anchor, to: head } : { from: head, to: anchor };
 }
 
 /**
