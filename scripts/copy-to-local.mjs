@@ -11,11 +11,9 @@ const manifest = JSON.parse(
 const pluginId = manifest.id;
 
 const envResult = findEnvValue('VAULT_PATH', process.cwd());
-const configuredVaultPath = process.env.VAULT_PATH?.trim() || envResult?.value;
-
-if (!configuredVaultPath) {
-	throw new Error('VAULT_PATH is not set. Add it to .env in the repository or one of its parent directories.');
-}
+const configuredVaultPath = process.env.VAULT_PATH?.trim()
+	|| envResult?.value
+	|| 'H:\\Docs\\Obsinote';
 
 const vaultPath = isAbsolute(configuredVaultPath)
 	? configuredVaultPath
