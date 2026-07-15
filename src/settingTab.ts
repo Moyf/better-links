@@ -173,6 +173,19 @@ export class BetterLinksSettingTab extends PluginSettingTab {
                 });
         });
 
+        suggestGroup.addSetting((setting) => {
+            suggestSubEls.push(setting.settingEl);
+            setting
+                .setName(t("settingsQuickSelectName"))
+                .setDesc(t("settingsQuickSelectDesc"))
+                .addToggle((toggle) => {
+                    toggle.setValue(this.plugin.settings.quickSelect ?? false).onChange(async (value) => {
+                        this.plugin.settings.quickSelect = value;
+                        await this.plugin.saveSettings();
+                    });
+                });
+        });
+
         // ── 别名同步子设置 ──────────────────────────────────────────────────
         let aliasModeSettingEl: HTMLElement | null = null;
         let aliasSepSettingEl: HTMLElement | null = null;

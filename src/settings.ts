@@ -24,6 +24,8 @@ export interface BetterLinksSettings {
     validateInternalLinks?: boolean;
     /** 是否在编辑内部链接目标时显示笔记和标题的自动补全建议 */
     enableLinkSuggestions?: boolean;
+    /** 新建链接时，选中建议后是否立即插入链接并关闭浮窗 */
+    quickSelect?: boolean;
     /** 从 suggest 选中文件/标题时，是否自动同步别名（displayText） */
     syncAlias?: boolean;
     /** 别名生成模式（syncAlias 为 true 时有效） */
@@ -67,6 +69,7 @@ export const DEFAULT_SETTINGS: BetterLinksSettings = {
     edgeProtection: true,
     validateInternalLinks: true,
     enableLinkSuggestions: true,
+    quickSelect: false,
     syncAlias: true,
     aliasSyncMode: "heading-only",
     aliasSeparator: " > ",

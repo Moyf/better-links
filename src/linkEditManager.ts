@@ -81,6 +81,9 @@ export class LinkEditManager {
 				onSuggestionSelected: () => {
 					this.cancelPendingValidation();
 					this.setWarning(false);
+					if (this.activeSession?.isNew && (this.plugin.settings.quickSelect ?? false)) {
+						this.saveAndClose();
+					}
 				},
 			},
 			this.plugin.settings,
