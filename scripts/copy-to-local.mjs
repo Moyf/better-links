@@ -1,17 +1,35 @@
-import { copyFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, isAbsolute, join, parse, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
 // 获取 manifest.json 中的插件 ID（从 dist/ 读取）
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const manifestPath = join(__dirname, '..', 'dist', 'manifest.json'); // ← 从 dist/ 读取
 const manifest = JSON.parse(
-	(await import('fs')).readFileSync(manifestPath, 'utf-8')
+	readFileSync(manifestPath, 'utf-8')
 );
 const pluginId = manifest.id;
 
-// 本地插件路径
-const localPluginPath = 'H:\\Docs\\Obsinote\\.obsidian\\plugins\\' + pluginId;
+const envResult = findEnvValue('VAULT_PATH', process.cwd());
+const configuredVaultPath = process.env.VAULT_PATH?.trim() || envResult?.value;
+
+if (!configuredVaultPath) {
+	throw new Error('VAULT_PATH is not set. Add it to .env in the repository or one of its parent directories.');
+}
+
+const vaultPath = isAbsolute(configuredVaultPath)
+	? configuredVaultPath
+	: resolve(envResult?.directory ?? process.cwd(), configuredVaultPath);
+const obsidianConfigPath = join(vaultPath, '.obsidian');
+
+if (!existsSync(vaultPath)) {
+	throw new Error(`Vault directory does not exist: ${vaultPath}`);
+}
+if (!existsSync(obsidianConfigPath)) {
+	throw new Error(`Vault directory does not contain .obsidian: ${vaultPath}`);
+}
+
+const localPluginPath = join(obsidianConfigPath, 'plugins', pluginId);
 
 // 确保目标目录存在
 if (!existsSync(localPluginPath)) {
@@ -47,3 +65,33 @@ if (!existsSync(hotreloadPath)) {
 
 console.log(`\n✅ Build and copy completed for plugin: ${pluginId}`);
 console.log(`📁 Target: ${localPluginPath}`);
+
+function findEnvValue(key, startDirectory) {
+	let directory = resolve(startDirectory);
+	const root = parse(directory).root;
+
+	while (true) {
+		const envPath = join(directory, '.env');
+		if (existsSync(envPath)) {
+			const value = parseEnvValue(readFileSync(envPath, 'utf-8'), key);
+			if (value !== undefined) return { value, directory };
+		}
+		if (directory === root) return null;
+		directory = dirname(directory);
+	}
+}
+
+function parseEnvValue(contents, key) {
+	for (const line of contents.split(/\r?\n/u)) {
+		const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/u);
+		if (!match || match[1] !== key) continue;
+
+		const rawValue = match[2].trim();
+		if ((rawValue.startsWith('"') && rawValue.endsWith('"')) ||
+			(rawValue.startsWith("'") && rawValue.endsWith("'"))) {
+			return rawValue.slice(1, -1);
+		}
+		return rawValue.replace(/\s+#.*$/u, '').trim();
+	}
+	return undefined;
+}
