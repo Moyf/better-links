@@ -1,40 +1,26 @@
-import type { SearchResult, TFile } from "obsidian";
+import type { MetadataCache, SearchResult, TFile } from "obsidian";
 
-const MEDIA_EXTENSIONS = new Set([
-	"avif",
-	"bmp",
-	"flac",
-	"gif",
-	"jpeg",
-	"jpg",
-	"m4a",
-	"mkv",
-	"mov",
-	"mp3",
-	"mp4",
-	"oga",
-	"ogg",
-	"ogv",
-	"opus",
-	"png",
-	"svg",
-	"webm",
-	"webp",
-	"wav",
-]);
+type UserIgnoreMatcher = {
+	readonly isUserIgnored: (path: string) => boolean;
+};
 
 export type RankableFileSuggestion = {
 	readonly file: TFile;
 	readonly match: SearchResult | null;
+	readonly excluded: boolean;
 };
+
+export function isExcludedFile(metadataCache: MetadataCache, file: TFile): boolean {
+	return hasUserIgnoreMatcher(metadataCache) && metadataCache.isUserIgnored(file.path);
+}
 
 export function compareFileSuggestions(
 	a: RankableFileSuggestion,
 	b: RankableFileSuggestion,
 	recentFileRanks: ReadonlyMap<string, number>,
 ): number {
-	const typeDifference = getFileTypeRank(a.file) - getFileTypeRank(b.file);
-	if (typeDifference !== 0) return typeDifference;
+	const excludedDifference = Number(a.excluded) - Number(b.excluded);
+	if (excludedDifference !== 0) return excludedDifference;
 
 	const recentDifference = getRecentRank(a.file, recentFileRanks) - getRecentRank(b.file, recentFileRanks);
 	if (recentDifference !== 0) return recentDifference;
@@ -45,9 +31,8 @@ export function compareFileSuggestions(
 	return a.file.path.localeCompare(b.file.path);
 }
 
-function getFileTypeRank(file: TFile): number {
-	if (file.extension === "md") return 0;
-	return MEDIA_EXTENSIONS.has(file.extension.toLowerCase()) ? 2 : 1;
+function hasUserIgnoreMatcher(metadataCache: MetadataCache): metadataCache is MetadataCache & UserIgnoreMatcher {
+	return "isUserIgnored" in metadataCache && typeof metadataCache.isUserIgnored === "function";
 }
 
 function getRecentRank(file: TFile, recentFileRanks: ReadonlyMap<string, number>): number {

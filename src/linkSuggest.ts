@@ -1,7 +1,7 @@
 import { AbstractInputSuggest, App, prepareFuzzySearch, renderResults, TFile } from "obsidian";
 import type { HeadingCache, SearchResult } from "obsidian";
 import type { BetterLinksSettings } from "./settings";
-import { compareFileSuggestions } from "./suggestionOrder";
+import { compareFileSuggestions, isExcludedFile } from "./suggestionOrder";
 
 const MAX_SUGGESTIONS = 20;
 
@@ -9,6 +9,7 @@ type FileSuggestion = {
 	kind: "file";
 	file: TFile;
 	match: SearchResult | null;
+	excluded: boolean;
 	/** 当本条建议是通过 alias 命中时，这里记录命中的那个 alias 字符串。
 	 *  此时 match 是对 alias 的 fuzzy 结果（用于主标题高亮）。 */
 	matchedAlias?: string;
@@ -279,7 +280,12 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 
 		if (!query) {
 			return files
-				.map((file) => ({ kind: "file" as const, file, match: null }))
+				.map((file) => ({
+					kind: "file" as const,
+					file,
+					match: null,
+					excluded: isExcludedFile(this.app.metadataCache, file),
+				}))
 				.sort((a, b) => compareFileSuggestions(a, b, recentFileRanks))
 				.slice(0, MAX_SUGGESTIONS);
 		}
@@ -288,6 +294,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 		const results: FileSuggestion[] = [];
 
 		for (const file of files) {
+			const excluded = isExcludedFile(this.app.metadataCache, file);
 			// 同时对 path 和 basename 做匹配，取更高分
 			const matchPath = search(file.path);
 			const matchBasename = search(file.basename);
@@ -303,10 +310,11 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 					kind: "file",
 					file,
 					match: aliasHit.match,
+					excluded,
 					matchedAlias: aliasHit.alias,
 				});
 			} else if (nameMatch) {
-				results.push({ kind: "file", file, match: nameMatch });
+				results.push({ kind: "file", file, match: nameMatch, excluded });
 			}
 		}
 
