@@ -1,6 +1,7 @@
 import { AbstractInputSuggest, App, prepareFuzzySearch, renderResults, TFile } from "obsidian";
 import type { HeadingCache, SearchResult } from "obsidian";
 import type { BetterLinksSettings } from "./settings";
+import { compareFileSuggestions } from "./suggestionOrder";
 
 const MAX_SUGGESTIONS = 20;
 
@@ -272,13 +273,15 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 	private getFileSuggestions(query: string): LinkSuggestion[] {
 		// vault.getFiles() 返回所有文件（含非 md），vault.getMarkdownFiles() 只返回 md
 		const files = this.app.vault.getFiles();
+		const recentFileRanks = new Map(
+			this.app.workspace.getLastOpenFiles().map((path, index) => [path, index]),
+		);
 
 		if (!query) {
 			return files
-				.slice()
-				.sort((a, b) => a.path.localeCompare(b.path))
-				.slice(0, MAX_SUGGESTIONS)
-				.map((file) => ({ kind: "file" as const, file, match: null }));
+				.map((file) => ({ kind: "file" as const, file, match: null }))
+				.sort((a, b) => compareFileSuggestions(a, b, recentFileRanks))
+				.slice(0, MAX_SUGGESTIONS);
 		}
 
 		const search = prepareFuzzySearch(query);
@@ -307,7 +310,7 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 			}
 		}
 
-		results.sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0));
+		results.sort((a, b) => compareFileSuggestions(a, b, recentFileRanks));
 		return results.slice(0, MAX_SUGGESTIONS);
 	}
 
