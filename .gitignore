@@ -30,3 +30,4 @@ scripts/sync-agents.sh
 # Build output
 dist/
 /.sisyphus
+/.omo
