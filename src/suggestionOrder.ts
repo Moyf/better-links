@@ -8,13 +8,14 @@ export type RankableFileSuggestion = {
 	readonly file: TFile;
 	readonly match: SearchResult | null;
 	readonly excluded: boolean;
+	readonly matchRank: number;
 };
 
 export function isExcludedFile(metadataCache: MetadataCache, file: TFile): boolean {
 	return hasUserIgnoreMatcher(metadataCache) && metadataCache.isUserIgnored(file.path);
 }
 
-export function compareFileSuggestions(
+export function compareRecentFileSuggestions(
 	a: RankableFileSuggestion,
 	b: RankableFileSuggestion,
 	recentFileRanks: ReadonlyMap<string, number>,
@@ -25,8 +26,25 @@ export function compareFileSuggestions(
 	const recentDifference = getRecentRank(a.file, recentFileRanks) - getRecentRank(b.file, recentFileRanks);
 	if (recentDifference !== 0) return recentDifference;
 
+	return a.file.path.localeCompare(b.file.path);
+}
+
+export function compareSearchFileSuggestions(
+	a: RankableFileSuggestion,
+	b: RankableFileSuggestion,
+	recentFileRanks: ReadonlyMap<string, number>,
+): number {
+	const excludedDifference = Number(a.excluded) - Number(b.excluded);
+	if (excludedDifference !== 0) return excludedDifference;
+
+	const rankDifference = a.matchRank - b.matchRank;
+	if (rankDifference !== 0) return rankDifference;
+
 	const scoreDifference = (b.match?.score ?? 0) - (a.match?.score ?? 0);
 	if (scoreDifference !== 0) return scoreDifference;
+
+	const recentDifference = getRecentRank(a.file, recentFileRanks) - getRecentRank(b.file, recentFileRanks);
+	if (recentDifference !== 0) return recentDifference;
 
 	return a.file.path.localeCompare(b.file.path);
 }

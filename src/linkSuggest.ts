@@ -1,7 +1,7 @@
 import { AbstractInputSuggest, App, prepareFuzzySearch, renderResults, TFile } from "obsidian";
 import type { HeadingCache, SearchResult } from "obsidian";
 import type { BetterLinksSettings } from "./settings";
-import { compareFileSuggestions, isExcludedFile } from "./suggestionOrder";
+import { compareRecentFileSuggestions, compareSearchFileSuggestions, isExcludedFile } from "./suggestionOrder";
 
 const MAX_SUGGESTIONS = 20;
 
@@ -10,6 +10,7 @@ type FileSuggestion = {
 	file: TFile;
 	match: SearchResult | null;
 	excluded: boolean;
+	matchRank: number;
 	/** 当本条建议是通过 alias 命中时，这里记录命中的那个 alias 字符串。
 	 *  此时 match 是对 alias 的 fuzzy 结果（用于主标题高亮）。 */
 	matchedAlias?: string;
@@ -285,12 +286,14 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 					file,
 					match: null,
 					excluded: isExcludedFile(this.app.metadataCache, file),
+					matchRank: 0,
 				}))
-				.sort((a, b) => compareFileSuggestions(a, b, recentFileRanks))
+				.sort((a, b) => compareRecentFileSuggestions(a, b, recentFileRanks))
 				.slice(0, MAX_SUGGESTIONS);
 		}
 
 		const search = prepareFuzzySearch(query);
+		const normalizedQuery = query.toLowerCase();
 		const results: FileSuggestion[] = [];
 
 		for (const file of files) {
@@ -299,26 +302,30 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 			const matchPath = search(file.path);
 			const matchBasename = search(file.basename);
 			const nameMatch = betterMatch(matchPath, matchBasename);
+			const nameMatchRank = getMatchRank(normalizedQuery, file.basename);
 
 			// 通过 metadataCache 检索 aliases，挑出分数最高的命中 alias
 			const aliasHit = this.findBestAliasMatch(file, search);
 
-			// 命中 alias 且分数 ≥ basename/path 命中：作为 alias 命中条目展示
-			// 否则若 path/basename 命中：作为普通文件命中
-			if (aliasHit && (!nameMatch || aliasHit.match.score > nameMatch.score)) {
+			// 同等匹配质量下 basename 优先于 alias；质量相同时再比较 fuzzy score。
+			const aliasMatchRank = aliasHit ? getMatchRank(normalizedQuery, aliasHit.alias) + 1 : Number.POSITIVE_INFINITY;
+			if (aliasHit && (!nameMatch
+				|| aliasMatchRank < nameMatchRank
+				|| (aliasMatchRank === nameMatchRank && aliasHit.match.score > nameMatch.score))) {
 				results.push({
 					kind: "file",
 					file,
 					match: aliasHit.match,
 					excluded,
+					matchRank: aliasMatchRank,
 					matchedAlias: aliasHit.alias,
 				});
 			} else if (nameMatch) {
-				results.push({ kind: "file", file, match: nameMatch, excluded });
+				results.push({ kind: "file", file, match: nameMatch, excluded, matchRank: nameMatchRank });
 			}
 		}
 
-		results.sort((a, b) => compareFileSuggestions(a, b, recentFileRanks));
+		results.sort((a, b) => compareSearchFileSuggestions(a, b, recentFileRanks));
 		return results.slice(0, MAX_SUGGESTIONS);
 	}
 
@@ -387,6 +394,13 @@ function betterMatch(a: SearchResult | null, b: SearchResult | null): SearchResu
 	if (!a) return b;
 	if (!b) return a;
 	return a.score >= b.score ? a : b;
+}
+
+function getMatchRank(normalizedQuery: string, value: string): number {
+	const normalizedValue = value.toLowerCase();
+	if (normalizedValue === normalizedQuery) return 0;
+	if (normalizedValue.startsWith(normalizedQuery)) return 2;
+	return 4;
 }
 
 /**
