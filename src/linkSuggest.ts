@@ -298,11 +298,10 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 
 		for (const file of files) {
 			const excluded = isExcludedFile(this.app.metadataCache, file);
-			// 同时对 path 和 basename 做匹配，取更高分
-			const matchPath = search(file.path);
+			// basename 命中优先于 path-only 命中，避免目录中的零散字符抬高无关文件。
 			const matchBasename = search(file.basename);
-			const nameMatch = betterMatch(matchPath, matchBasename);
-			const nameMatchRank = getMatchRank(normalizedQuery, file.basename);
+			const nameMatch = matchBasename ?? search(file.path);
+			const nameMatchRank = matchBasename ? getMatchRank(normalizedQuery, file.basename) : 6;
 
 			// 通过 metadataCache 检索 aliases，挑出分数最高的命中 alias
 			const aliasHit = this.findBestAliasMatch(file, search);
@@ -387,14 +386,6 @@ export class LinkDestinationSuggest extends AbstractInputSuggest<LinkSuggestion>
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-/** 返回两个 SearchResult 中分数更高的那个（或唯一非 null 的那个）。 */
-function betterMatch(a: SearchResult | null, b: SearchResult | null): SearchResult | null {
-	if (!a && !b) return null;
-	if (!a) return b;
-	if (!b) return a;
-	return a.score >= b.score ? a : b;
-}
 
 function getMatchRank(normalizedQuery: string, value: string): number {
 	const normalizedValue = value.toLowerCase();
