@@ -37,6 +37,10 @@ Click a link to open a small popover where you can edit text/target and run quic
 1. This idea and solution are inspired by [Octarine](https://octarine.app/).
 2. This project is based on David V. Kimbal's [obsidian-sample-plugin-plus](https://github.com/davidvkimball/obsidian-sample-plugin-plus) and was developed with AI assistance; I actively install it in my own vault for frontline testing and daily use.
 
+### Support
+
+If you like Better Links, consider [buying me a coffee on Ko-fi](https://ko-fi.com/moy) ☕
+
 ---
 
 ## 中文
@@ -71,3 +75,7 @@ Better Links 是一个 Obsidian 插件，用于在 Markdown 编辑器中快速�
 
 1. 这个想法和方案灵感来自 [Octarine](https://octarine.app/)。
 2. 该项目基于 David V. Kimbal 的 [obsidian-sample-plugin-plus](https://github.com/davidvkimball/obsidian-sample-plugin-plus) ，由 AI 进行开发；我会第一时间将插件安装到自己的库中进行测试和实际使用。
+
+### 支持作者
+
+如果 Better Links 对你有帮助，欢迎[请我喝杯咖啡（Ko-fi）](https://ko-fi.com/moy) ☕
