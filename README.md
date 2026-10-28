@@ -37,6 +37,16 @@ Click a link to open a small popover where you can edit text/target and run quic
 1. This idea and solution are inspired by [Octarine](https://octarine.app/).
 2. This project is based on David V. Kimbal's [obsidian-sample-plugin-plus](https://github.com/davidvkimball/obsidian-sample-plugin-plus) and was developed with AI assistance; I actively install it in my own vault for frontline testing and daily use.
 
+### More from Moy
+
+If you appreciate my plugin design and quality, check out my other Obsidian plugins:
+
+| Plugin name | Description | Stats |
+| --- | --- | --- |
+| [Keyword Decorator](https://github.com/Moyf/keyword-decorator) | Keyword highlighting and decoration with Emoji/Lucide/image/SVG markers and once-per-note decoration. <!-- Draft; pending Moy review. --> | [![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&logoColor=white&color=%23483699&label=downloads&query=%24%5B%22keyword-decorator%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)](https://obsidian.md/plugins?id=keyword-decorator) [![GitHub Stars](https://img.shields.io/github/stars/Moyf/keyword-decorator?logo=github&label=Stars)](https://github.com/Moyf/keyword-decorator/stargazers) |
+
+> See all my plugins on my [Obsidian Community page](https://community.obsidian.md/users/moyf).
+
 ### Support
 
 If you like Better Links, consider [buying me a coffee on Ko-fi](https://ko-fi.com/moy) ☕
@@ -75,6 +85,16 @@ Better Links 是一个 Obsidian 插件，用于在 Markdown 编辑器中快速�
 
 1. 这个想法和方案灵感来自 [Octarine](https://octarine.app/)。
 2. 该项目基于 David V. Kimbal 的 [obsidian-sample-plugin-plus](https://github.com/davidvkimball/obsidian-sample-plugin-plus) ，由 AI 进行开发；我会第一时间将插件安装到自己的库中进行测试和实际使用。
+
+### 来自 Moy 的更多插件
+
+如果你欣赏我的插件设计和质量，可以看看我的其他 Obsidian 插件：
+
+| 插件名称 | 简介 | 数据 |
+| --- | --- | --- |
+| [Keyword Decorator](https://github.com/Moyf/keyword-decorator) | 关键词高亮与装饰，支持 Emoji/Lucide/图片/SVG 标记与整篇首次装饰。 <!-- Draft; pending Moy review. --> | [![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&logoColor=white&color=%23483699&label=downloads&query=%24%5B%22keyword-decorator%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)](https://obsidian.md/plugins?id=keyword-decorator) [![GitHub Stars](https://img.shields.io/github/stars/Moyf/keyword-decorator?logo=github&label=Stars)](https://github.com/Moyf/keyword-decorator/stargazers) |
+
+> 全部插件见 [Moy 的 Obsidian Community 页面](https://community.obsidian.md/users/moyf)。
 
 ### 支持作者
 
